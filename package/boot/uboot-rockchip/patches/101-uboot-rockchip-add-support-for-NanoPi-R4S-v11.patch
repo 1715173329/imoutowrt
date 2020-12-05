@@ -206,4 +206,3 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
 +CONFIG_DISPLAY_ROCKCHIP_HDMI=y
 +CONFIG_SPL_TINY_MEMSET=y
 +CONFIG_ERRNO_STR=y
-
