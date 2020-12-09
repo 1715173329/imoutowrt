@@ -33,7 +33,7 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
 + */
 +
 +#include "rk3399-nanopi4-u-boot.dtsi"
-+#include "rk3399-sdram-lpddr3-samsung-4GB-1866.dtsi"
++#include "rk3399-sdram-ddr3-1866.dtsi"
 +#include "rk3399-sdram-lpddr4-100.dtsi"
 --- /dev/null
 +++ b/arch/arm/dts/rk3399-nanopi-r4s.dts
