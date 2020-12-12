@@ -29,3 +29,32 @@ Signed-off-by: David Bauer <mail@david-bauer.net>
  	chosen {
  		stdout-path = "serial2:1500000n8";
  	};
+--- a/arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi
+@@ -17,6 +17,13 @@
+ #include "rk3399-opp.dtsi"
+ 
+ / {
++	aliases {
++		led-boot = &sys_led;
++		led-failsafe = &sys_led;
++		led-running = &sys_led;
++		led-upgrade = &sys_led;
++	};
++
+ 	chosen {
+ 		stdout-path = "serial2:1500000n8";
+ 	};
+@@ -98,10 +105,9 @@
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&leds_gpio>;
+ 
+-		status {
++		sys_led: led-0 {
+ 			gpios = <&gpio0 RK_PB5 GPIO_ACTIVE_HIGH>;
+-			label = "status_led";
+-			linux,default-trigger = "heartbeat";
++			label = "nanopi4:red:sys";
+ 		};
+ 	};
+ 
