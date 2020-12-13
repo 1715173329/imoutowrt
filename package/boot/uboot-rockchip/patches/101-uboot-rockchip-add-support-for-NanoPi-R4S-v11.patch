@@ -1,30 +1,35 @@
-From 0037434d4f46652f70155a4fd07b52c7540f35b2 Mon Sep 17 00:00:00 2001
+From f0e2a9d59c86b6c6cdeb2bdf00cf60f1dd68425e Mon Sep 17 00:00:00 2001
 From: Marty Jones <mj8263788@gmail.com>
 Date: Fri, 4 Dec 2020 10:09:24 -0500
 Subject: [PATCH] uboot-rockchip: add support for NanoPi R4S v11
 
 Signed-off-by: Marty Jones <mj8263788@gmail.com>
 ---
- arch/arm/dts/Makefile                         |   1 +
+ arch/arm/dts/Makefile                         |   2 +
  arch/arm/dts/rk3399-nanopi-r4s-1g-u-boot.dtsi |   7 +
+ arch/arm/dts/rk3399-nanopi-r4s-1g.dts         |   3 +
  arch/arm/dts/rk3399-nanopi-r4s-4g-u-boot.dtsi |   7 +
- arch/arm/dts/rk3399-nanopi-r4s.dts            | 138 ++++++++++++++++++
+ arch/arm/dts/rk3399-nanopi-r4s-4g.dts         |   3 +
+ arch/arm/dts/rk3399-nanopi-r4s.dtsi           | 138 ++++++++++++++++++
  configs/nanopi-r4s-1g-rk3399_defconfig        |  61 ++++++++
  configs/nanopi-r4s-4g-rk3399_defconfig        |  62 ++++++++
- 6 files changed, 276 insertions(+)
+ 8 files changed, 283 insertions(+)
  create mode 100644 arch/arm/dts/rk3399-nanopi-r4s-1g-u-boot.dtsi
+ create mode 100644 arch/arm/dts/rk3399-nanopi-r4s-1g.dts
  create mode 100644 arch/arm/dts/rk3399-nanopi-r4s-4g-u-boot.dtsi
- create mode 100644 arch/arm/dts/rk3399-nanopi-r4s.dts
+ create mode 100644 arch/arm/dts/rk3399-nanopi-r4s-4g.dts
+ create mode 100644 arch/arm/dts/rk3399-nanopi-r4s.dtsi
  create mode 100644 configs/nanopi-r4s-1g-rk3399_defconfig
  create mode 100644 configs/nanopi-r4s-4g-rk3399_defconfig
 
 --- a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -131,6 +131,7 @@ dtb-$(CONFIG_ROCKCHIP_RK3399) += \
+@@ -131,6 +131,8 @@ dtb-$(CONFIG_ROCKCHIP_RK3399) += \
  	rk3399-nanopi-m4.dtb \
  	rk3399-nanopi-m4-2gb.dtb \
  	rk3399-nanopi-neo4.dtb \
-+	rk3399-nanopi-r4s.dtb \
++	rk3399-nanopi-r4s-1g.dtb \
++	rk3399-nanopi-r4s-4g.dtb \
  	rk3399-orangepi.dtb \
  	rk3399-pinebook-pro.dtb \
  	rk3399-puma-haikou.dtb \
@@ -39,6 +44,12 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
 +#include "rk3399-nanopi4-u-boot.dtsi"
 +#include "rk3399-sdram-ddr3-1600.dtsi"
 --- /dev/null
++++ b/arch/arm/dts/rk3399-nanopi-r4s-1g.dts
+@@ -0,0 +1,3 @@
++// SPDX-License-Identifier: GPL-2.0
++
++#include "rk3399-nanopi-r4s.dtsi"
+--- /dev/null
 +++ b/arch/arm/dts/rk3399-nanopi-r4s-4g-u-boot.dtsi
 @@ -0,0 +1,7 @@
 +// SPDX-License-Identifier: GPL-2.0+
@@ -49,7 +60,13 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
 +#include "rk3399-nanopi4-u-boot.dtsi"
 +#include "rk3399-sdram-lpddr4-100.dtsi"
 --- /dev/null
-+++ b/arch/arm/dts/rk3399-nanopi-r4s.dts
++++ b/arch/arm/dts/rk3399-nanopi-r4s-4g.dts
+@@ -0,0 +1,3 @@
++// SPDX-License-Identifier: GPL-2.0
++
++#include "rk3399-nanopi-r4s.dtsi"
+--- /dev/null
++++ b/arch/arm/dts/rk3399-nanopi-r4s.dtsi
 @@ -0,0 +1,138 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
@@ -215,7 +232,7 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
 +# CONFIG_CMD_SETEXPR is not set
 +CONFIG_CMD_TIME=y
 +CONFIG_SPL_OF_CONTROL=y
-+CONFIG_DEFAULT_DEVICE_TREE="rk3399-nanopi-r4s"
++CONFIG_DEFAULT_DEVICE_TREE="rk3399-nanopi-r4s-1g"
 +CONFIG_OF_SPL_REMOVE_PROPS="pinctrl-0 pinctrl-names clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"
 +CONFIG_ENV_IS_IN_MMC=y
 +CONFIG_SYS_RELOC_GD_ENV_ADDR=y
@@ -279,7 +296,7 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
 +# CONFIG_CMD_SETEXPR is not set
 +CONFIG_CMD_TIME=y
 +CONFIG_SPL_OF_CONTROL=y
-+CONFIG_DEFAULT_DEVICE_TREE="rk3399-nanopi-r4s"
++CONFIG_DEFAULT_DEVICE_TREE="rk3399-nanopi-r4s-4g"
 +CONFIG_OF_SPL_REMOVE_PROPS="pinctrl-0 pinctrl-names clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"
 +CONFIG_ENV_IS_IN_MMC=y
 +CONFIG_SYS_RELOC_GD_ENV_ADDR=y
