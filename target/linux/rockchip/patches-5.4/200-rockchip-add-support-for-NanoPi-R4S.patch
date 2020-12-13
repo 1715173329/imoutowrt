@@ -38,7 +38,7 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
 +#include "rk3399-op1-opp.dtsi"
 +
 +/ {
-+	model = "FriendlyElec NanoPi R4S";
++	model = "FriendlyElec NanoPi R4S (傻逼商家售卖本固件必死)";
 +	compatible = "friendlyarm,nanopi-r4s", "rockchip,rk3399";
 +
 +	aliases {
