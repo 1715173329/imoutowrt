@@ -42,18 +42,18 @@ define U-Boot/nanopi-r4s-rk3399/common
   BUILD_SUBTARGET:=armv8
   NAME:=NanoPi R4S
   BUILD_DEVICES:= \
-    friendlyarm_nanopi-r4s-$(lastword $(subst -, ,$(1)))
-  DEPENDS:=+PACKAGE_u-boot-nanopi-r4s-rk3399:arm-trusted-firmware-rockchip
+    friendlyarm_nanopi-r4s-$(word 3, $(subst -, ,$(1)))
+  DEPENDS:=+PACKAGE_u-boot-nanopi-r4s-$(word 3, $(subst -, ,$(1)))-rk3399:arm-trusted-firmware-rockchip
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rockchip
   ATF:=rk3399_bl31.elf
 endef
 
-define U-Boot/nanopi-r4s-rk3399-1g
+define U-Boot/nanopi-r4s-1g-rk3399
   $(U-Boot/nanopi-r4s-rk3399/common)
   NAME+= 1G
 endef
 
-define U-Boot/nanopi-r4s-rk3399-4g
+define U-Boot/nanopi-r4s-4g-rk3399
   $(U-Boot/nanopi-r4s-rk3399/common)
   NAME+= 4G
 endef
@@ -81,7 +81,8 @@ endef
 UBOOT_TARGETS := \
   rock-pi-4-rk3399 \
   rockpro64-rk3399 \
-  nanopi-r4s-rk3399 \
+  nanopi-r4s-1g-rk3399 \
+  nanopi-r4s-4g-rk3399 \
   nanopi-r2s-rk3328
 
 UBOOT_CONFIGURE_VARS += USE_PRIVATE_LIBGCC=yes
