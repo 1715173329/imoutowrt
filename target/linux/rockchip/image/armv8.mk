@@ -1,4 +1,4 @@
-# 
+#
 # Copyright (C) 2020 Tobias Maedel
 #
 # This is free software, licensed under the GNU General Public License v2.
@@ -19,10 +19,23 @@ define Device/friendlyarm_nanopi-r4s
   DEVICE_VENDOR := FriendlyARM
   DEVICE_MODEL := NanoPi R4S
   SOC := rk3399
-  UBOOT_DEVICE_NAME := nanopi-r4s-rk3399
+  DEVICE_DTS = rockchip/$$(SOC)-nanopi-r4s
+  UBOOT_DEVICE_NAME := nanopi-r4s-$(lastword $(subst -, ,$(1)))-$$(SOC)
   DEVICE_PACKAGES := kmod-r8168
+  IMAGE/sysupgrade.img.gz := boot-common | boot-script nanopi-r4s | pine64-img | gzip | append-metadata
 endef
-TARGET_DEVICES += friendlyarm_nanopi-r4s
+
+define Device/friendlyarm_nanopi-r4s-1g
+  $(Device/friendlyarm_nanopi-r4s)
+  DEVICE_MODEL += 1G
+endef
+TARGET_DEVICES += friendlyarm_nanopi-r4s-1g
+
+define Device/friendlyarm_nanopi-r4s-4g
+  $(Device/friendlyarm_nanopi-r4s)
+  DEVICE_MODEL += 4G
+endef
+TARGET_DEVICES += friendlyarm_nanopi-r4s-4g
 
 define Device/pine64_rockpro64
   DEVICE_VENDOR := Pine64

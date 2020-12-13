@@ -26,7 +26,8 @@ friendlyarm,nanopi-r2s)
 	set_interface_core 2 "eth0"
 	set_interface_core 4 "eth1" "xhci-hcd:usb3"
 	;;
-friendlyarm,nanopi-r4s)
+friendlyarm,nanopi-r4s-1g|\
+friendlyarm,nanopi-r4s-4g)
 	set_interface_core 10 "eth0"
 	set_interface_core 20 "eth1"
 	;;

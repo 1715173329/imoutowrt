@@ -38,14 +38,24 @@ endef
 
 # RK3399 boards
 
-define U-Boot/nanopi-r4s-rk3399
+define U-Boot/nanopi-r4s-rk3399/common
   BUILD_SUBTARGET:=armv8
   NAME:=NanoPi R4S
   BUILD_DEVICES:= \
-    friendlyarm_nanopi-r4s
+    friendlyarm_nanopi-r4s-$(lastword $(subst -, ,$(1)))
   DEPENDS:=+PACKAGE_u-boot-nanopi-r4s-rk3399:arm-trusted-firmware-rockchip
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rockchip
   ATF:=rk3399_bl31.elf
+endef
+
+define U-Boot/nanopi-r4s-rk3399-1g
+  $(U-Boot/nanopi-r4s-rk3399/common)
+  NAME+= 1G
+endef
+
+define U-Boot/nanopi-r4s-rk3399-4g
+  $(U-Boot/nanopi-r4s-rk3399/common)
+  NAME+= 4G
 endef
 
 define U-Boot/rock-pi-4-rk3399
