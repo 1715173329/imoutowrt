@@ -38,14 +38,32 @@ endef
 
 # RK3399 boards
 
-define U-Boot/nanopi-r4s-rk3399
+define U-Boot/nanopi-r4s-rk3399/common
   BUILD_SUBTARGET:=armv8
   NAME:=NanoPi R4S
   BUILD_DEVICES:= \
-    friendlyarm_nanopi-r4s
-  DEPENDS:=+PACKAGE_u-boot-nanopi-r4s-rk3399:arm-trusted-firmware-rockchip
+    friendlyarm_nanopi-r4s-$(word 3, $(subst -, ,$(1)))
+  DEPENDS:=+PACKAGE_u-boot-nanopi-r4s-$(word 3, $(subst -, ,$(1)))-rk3399:arm-trusted-firmware-rockchip
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rockchip
+  UBOOT_CONFIG:=nanopi-r4s-rk3399
+  UBOOT_DTS:=rk3399-nanopi-r4s
   ATF:=rk3399_bl31.elf
+endef
+
+define U-Boot/nanopi-r4s-1g-rk3399
+  $(U-Boot/nanopi-r4s-rk3399/common)
+  NAME+= 1G
+  CONFIG_SED_ARGS:= \
+   /CONFIG_RAM_RK3399_LPDDR4/d;
+  UBOOT_DTSI_SED_ARGS:= \
+   /rk3399-sdram-lpddr4-100.dtsi/d;
+endef
+
+define U-Boot/nanopi-r4s-4g-rk3399
+  $(U-Boot/nanopi-r4s-rk3399/common)
+  NAME+= 4G
+  UBOOT_DTSI_SED_ARGS:= \
+    /rk3399-sdram-ddr3-1600.dtsi/d;
 endef
 
 define U-Boot/rock-pi-4-rk3399
@@ -71,7 +89,8 @@ endef
 UBOOT_TARGETS := \
   rock-pi-4-rk3399 \
   rockpro64-rk3399 \
-  nanopi-r4s-rk3399 \
+  nanopi-r4s-1g-rk3399 \
+  nanopi-r4s-4g-rk3399 \
   nanopi-r2s-rk3328
 
 UBOOT_CONFIGURE_VARS += USE_PRIVATE_LIBGCC=yes
@@ -80,7 +99,14 @@ UBOOT_MAKE_FLAGS += \
   BL31=$(STAGING_DIR_IMAGE)/$(ATF)
 
 define Build/Configure
-	$(call Build/Configure/U-Boot)
+
+ifneq ($(CONFIG_SED_ARGS),)
+	$(SED) '$(CONFIG_SED_ARGS)' $(PKG_BUILD_DIR)/configs/$(UBOOT_CONFIG)_defconfig
+endif
+
+ifneq ($(UBOOT_DTSI_SED_ARGS),)
+	$(SED) '$(UBOOT_DTSI_SED_ARGS)' $(PKG_BUILD_DIR)/arch/arm/dts/$(UBOOT_DTS)-u-boot.dtsi
+endif
 
 ifneq ($(OF_PLATDATA),)
 	mkdir -p $(PKG_BUILD_DIR)/tpl/dts
@@ -89,6 +115,8 @@ ifneq ($(OF_PLATDATA),)
 	$(CP) $(PKG_BUILD_DIR)/of-platdata/$(OF_PLATDATA)/dt-platdata.c $(PKG_BUILD_DIR)/tpl/dts/dt-platdata.c
 	$(CP) $(PKG_BUILD_DIR)/of-platdata/$(OF_PLATDATA)/dt-structs-gen.h $(PKG_BUILD_DIR)/include/generated/dt-structs-gen.h
 endif
+
+	$(call Build/Configure/U-Boot)
 
 	$(SED) 's#CONFIG_MKIMAGE_DTC_PATH=.*#CONFIG_MKIMAGE_DTC_PATH="$(PKG_BUILD_DIR)/scripts/dtc/dtc"#g' $(PKG_BUILD_DIR)/.config
 	echo 'CONFIG_IDENT_STRING=" OpenWrt"' >> $(PKG_BUILD_DIR)/.config
