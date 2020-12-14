@@ -35,7 +35,7 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
 +
 +/dts-v1/;
 +#include "rk3399-nanopi4.dtsi"
-+#include "rk3399-op1-opp.dtsi"
++#include "rk3399-nanopi-opp.dtsi"
 +
 +/ {
 +	model = "FriendlyElec NanoPi R4S (傻逼商家售卖本固件必死)";
