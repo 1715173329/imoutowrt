@@ -44,6 +44,7 @@ define U-Boot/nanopi-r4s-rk3399/common
   BUILD_DEVICES:= \
     friendlyarm_nanopi-r4s-$(word 3, $(subst -, ,$(1)))
   DEPENDS:=+PACKAGE_u-boot-nanopi-r4s-$(word 3, $(subst -, ,$(1)))-rk3399:arm-trusted-firmware-rockchip
+  UBOOT_CONFIG:=nanopi-r4s-rk3399
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rockchip
   ATF:=rk3399_bl31.elf
 endef
@@ -51,11 +52,17 @@ endef
 define U-Boot/nanopi-r4s-1g-rk3399
   $(U-Boot/nanopi-r4s-rk3399/common)
   NAME+= 1G
+  CONFIG_SED_ARGS:= \
+   /CONFIG_RAM_RK3399_LPDDR4/d:
+  UBOOT_DTSI_SED_ARGS:= \
+   /rk3399-sdram-lpddr4-100.dtsi/d:
 endef
 
 define U-Boot/nanopi-r4s-4g-rk3399
   $(U-Boot/nanopi-r4s-rk3399/common)
   NAME+= 4G
+  UBOOT_DTSI_SED_ARGS:= \
+    /rk3399-sdram-ddr3-1600.dtsi/d;
 endef
 
 define U-Boot/rock-pi-4-rk3399
@@ -92,6 +99,14 @@ UBOOT_MAKE_FLAGS += \
 
 define Build/Configure
 	$(call Build/Configure/U-Boot)
+
+ifneq ($(CONFIG_SED_ARGS),)
+	$(SED) '$(DEFCONF_SED_ARGS)' $(PKG_BUILD_DIR)/.config
+endif
+
+ifneq ($(UBOOT_DTSI_SED_ARGS),)
+	$(SED) '$(UBOOT_DTSI_SED_ARGS)' $(PKG_BUILD_DIR)/arch/arm/dts/$(UBOOT_CONFIG)-u-boot.dtsi
+endif
 
 ifneq ($(OF_PLATDATA),)
 	mkdir -p $(PKG_BUILD_DIR)/tpl/dts
