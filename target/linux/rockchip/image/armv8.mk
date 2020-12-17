@@ -22,6 +22,7 @@ define Device/friendlyarm_nanopi-r4s
   DEVICE_DTS = rockchip/$$(SOC)-nanopi-r4s
   UBOOT_DEVICE_NAME := nanopi-r4s-$(lastword $(subst -, ,$(1)))-$$(SOC)
   DEVICE_PACKAGES := kmod-r8168
+  SUPPORTED_DEVICES:= friendlyarm,nanopi-r4s
   IMAGE/sysupgrade.img.gz := boot-common | boot-script nanopi-r4s | pine64-img | gzip | append-metadata
 endef
 
