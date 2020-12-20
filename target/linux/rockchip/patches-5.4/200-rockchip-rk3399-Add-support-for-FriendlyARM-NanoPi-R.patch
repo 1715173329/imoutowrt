@@ -19,9 +19,9 @@ Co-authored-by: Marty Jones <mj8263788@gmail.com>
 Signed-off-by: Marty Jones <mj8263788@gmail.com>
 ---
  arch/arm64/boot/dts/rockchip/Makefile         |   2 +
- .../dts/rockchip/rk3399-nanopi-r4s-1gb.dts    |   8 +
- .../dts/rockchip/rk3399-nanopi-r4s-4gb.dts    |   8 +
- .../boot/dts/rockchip/rk3399-nanopi-r4s.dtsi  | 141 ++++++++++++++++++
+ .../dts/rockchip/rk3399-nanopi-r4s-1gb.dts    |  27 +
+ .../dts/rockchip/rk3399-nanopi-r4s-4gb.dts    |  27 +
+ .../boot/dts/rockchip/rk3399-nanopi-r4s.dtsi  | 122 ++++++++++++++++++
  4 files changed, 159 insertions(+)
  create mode 100644 arch/arm64/boot/dts/rockchip/rk3399-nanopi-r4s-1gb.dts
  create mode 100644 arch/arm64/boot/dts/rockchip/rk3399-nanopi-r4s-4gb.dts
@@ -40,7 +40,7 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-roc-pc.dtb
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3399-nanopi-r4s-1gb.dts
-@@ -0,0 +1,8 @@
+@@ -0,0 +1,27 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
 +#include "rk3399-nanopi-r4s.dtsi"
@@ -49,9 +49,28 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
 +	model = "FriendlyElec NanoPi R4S (1GB)";
 +	compatible = "friendlyarm,nanopi-r4s-1gb", "rockchip,rk3399";
 +};
++
++&leds {
++	/delete-node/ status;
++
++	lan_led: led-0 {
++		gpios = <&gpio1 RK_PA1 GPIO_ACTIVE_HIGH>;
++		label = "nanopi-r4s-1gb:green:lan";
++	};
++
++	sys_led: led-1 {
++		gpios = <&gpio0 RK_PB5 GPIO_ACTIVE_HIGH>;
++		label = "nanopi-r4s-1gb:red:sys";
++	};
++
++	wan_led: led-2 {
++		gpios = <&gpio1 RK_PA0 GPIO_ACTIVE_HIGH>;
++		label = "nanopi-r4s-1gb:green:wan";
++	};
++};
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3399-nanopi-r4s-4gb.dts
-@@ -0,0 +1,8 @@
+@@ -0,0 +1,27 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +
 +#include "rk3399-nanopi-r4s.dtsi"
@@ -60,9 +79,28 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
 +	model = "FriendlyElec NanoPi R4S (4GB)";
 +	compatible = "friendlyarm,nanopi-r4s-4gb", "rockchip,rk3399";
 +};
++
++&leds {
++	/delete-node/ status;
++
++	lan_led: led-0 {
++		gpios = <&gpio1 RK_PA1 GPIO_ACTIVE_HIGH>;
++		label = "nanopi-r4s-4gb:green:lan";
++	};
++
++	sys_led: led-1 {
++		gpios = <&gpio0 RK_PB5 GPIO_ACTIVE_HIGH>;
++		label = "nanopi-r4s-4gb:red:sys";
++	};
++
++	wan_led: led-2 {
++		gpios = <&gpio1 RK_PA0 GPIO_ACTIVE_HIGH>;
++		label = "nanopi-r4s-4gb:green:wan";
++	};
++};
 --- /dev/null
 +++ b/arch/arm64/boot/dts/rockchip/rk3399-nanopi-r4s.dtsi
-@@ -0,0 +1,141 @@
+@@ -0,0 +1,122 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Copyright (c) 2020 Marty Jones <mj8263788@gmail.com>
@@ -132,25 +170,6 @@ Signed-off-by: Marty Jones <mj8263788@gmail.com>
 +
 +&fusb0 {
 +	status = "disabled";
-+};
-+
-+&leds {
-+	/delete-node/ status;
-+
-+	lan_led: led-0 {
-+		gpios = <&gpio1 RK_PA1 GPIO_ACTIVE_HIGH>;
-+		label = "nanopi-r4s:green:lan";
-+	};
-+
-+	sys_led: led-1 {
-+		gpios = <&gpio0 RK_PB5 GPIO_ACTIVE_HIGH>;
-+		label = "nanopi-r4s:red:sys";
-+	};
-+
-+	wan_led: led-2 {
-+		gpios = <&gpio1 RK_PA0 GPIO_ACTIVE_HIGH>;
-+		label = "nanopi-r4s:green:wan";
-+	};
 +};
 +
 +&leds_gpio {
