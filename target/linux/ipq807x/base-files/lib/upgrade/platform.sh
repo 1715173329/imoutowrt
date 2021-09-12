@@ -38,7 +38,10 @@ platform_do_upgrade() {
 
 		# Reset success flag
 		fw_setenv flag_boot_success 0
-
+		nand_do_upgrade "$1"
+		;;
+	zte,mf269)
+		CI_UBIPART="rootfs"
 		nand_do_upgrade "$1"
 		;;
 	*)
