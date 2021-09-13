@@ -55,8 +55,8 @@ ALLWIFIBOARDS:= \
 	qxwlan_e2600ac \
 	redmi_ax6 \
 	xiaomi_ax3600 \
-	xiaomi_ax9000
-        zte_mf269
+	xiaomi_ax9000 \
+        zte_mf269 
 	
 ALLWIFIPACKAGES:=$(foreach BOARD,$(ALLWIFIBOARDS),ipq-wifi-$(BOARD))
 
