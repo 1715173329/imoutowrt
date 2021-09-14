@@ -73,6 +73,7 @@
 			qcom,link-poll = <1>;
 			qcom,phy-mdio-addr = <24>;
 			phy-mode = "sgmii";
+			mdio-bus = <&mdio>;
 		};
 
 		dp6: dp6 {
@@ -85,6 +86,7 @@
 			qcom,link-poll = <1>;
 			qcom,phy-mdio-addr = <28>;
 			phy-mode = "sgmii";
+			mdio-bus = <&mdio>;
 		};
 
 		zte_pm {
@@ -105,15 +107,11 @@
 	cs-select = <0>;
 
 	flash@0 {
-		compatible = "jedec,spi-nor";
+		compatible = "jedec,spi-nor", "n25q128a11";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		reg = <0>;
 		spi-max-frequency = <50000000>;
-
-		partitions {
-			compatible = "qcom,smem-part";
-		};
 	};
 };
 
@@ -495,10 +493,6 @@
 		nand-ecc-strength = <4>;
 		nand-ecc-step-size = <512>;
 		nand-bus-width = <8>;
-
-		partitions {
-			compatible = "qcom,smem-part";
-		};
 	};
 };
 
@@ -516,15 +510,6 @@
 		function = "blsp4_i2c1";
 		drive-strength = <8>;
 		bias-disable;
-	};
-
-	led_pins: led_pins {
-		led_pwr {
-			pins = "gpio56";
-			function = "gpio";
-			drive-strength = <8>;
-			bias-pull-down;
-		};
 	};
 
 	slic_ctl_pins: slic_ctl_pins {
