@@ -79,6 +79,6 @@ define Device/zte_mf269
 	PAGESIZE := 2048
 	DEVICE_DTS_CONFIG := config@ac04
 	SOC := ipq8071
-	DEVICE_PACKAGES := ipq-wifi-zte_mf269
+	DEVICE_PACKAGES := ipq-wifi-zte_mf269 uboot-envtools
 endef
 TARGET_DEVICES += zte_mf269
