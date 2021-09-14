@@ -493,6 +493,10 @@
 		nand-ecc-strength = <4>;
 		nand-ecc-step-size = <512>;
 		nand-bus-width = <8>;
+
+		partitions {
+			compatible = "qcom,smem-part";
+		};
 	};
 };
 
@@ -583,4 +587,3 @@
 
 	qcom,board_id = <658>;
 	qcom,ath11k-calibration-variant = "ZTE-MF269";
-};
