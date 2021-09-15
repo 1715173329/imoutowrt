@@ -32,7 +32,7 @@ define Device/edimax_cax1800
 	PAGESIZE := 2048
 	DEVICE_DTS_CONFIG := config@ac03
 	SOC := ipq8070
-	DEVICE_PACKAGES := ipq-wifi-edimax_cax1800 
+	DEVICE_PACKAGES := ipq-wifi-edimax_cax1800 uboot-envtools
 endef
 TARGET_DEVICES += edimax_cax1800
 
