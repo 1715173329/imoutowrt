@@ -1,0 +1,141 @@
+diff --git a/mac80211.c b/mac80211.c
+index 9a4aaab..37584ef 100644
+--- a/mac80211.c
++++ b/mac80211.c
+@@ -13,7 +13,7 @@
+ #include "bf.h"
+ #include "debug.h"
+ #include "wow.h"
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(BUILD_OPENWRT)
+ #include "sar.h"
+ #endif
+ 
+@@ -631,7 +631,7 @@ static int rtw_ops_ampdu_action(struct ieee80211_hw *hw,
+ 	switch (action) {
+ #endif
+ 	case IEEE80211_AMPDU_TX_START:
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0) || defined(BUILD_OPENWRT)
+ 		return IEEE80211_AMPDU_TX_START_IMMEDIATE;
+ #else
+ 		ieee80211_start_tx_ba_cb_irqsafe(vif, sta->addr, tid);
+@@ -698,7 +698,7 @@ static void rtw_ops_sw_scan_complete(struct ieee80211_hw *hw,
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+ static void rtw_ops_mgd_prepare_tx(struct ieee80211_hw *hw,
+ 				   struct ieee80211_vif *vif,
+-    #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,14,0))
++    #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,14,0) || defined(BUILD_OPENWRT))
+ 				   struct ieee80211_prep_tx_info *info)
+     #else
+ 				   u16 duration)
+@@ -925,7 +925,7 @@ static void rtw_ops_cancel_hw_scan(struct ieee80211_hw *hw,
+ 	mutex_unlock(&rtwdev->mutex);
+ }
+ 
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(BUILD_OPENWRT)
+ static int rtw_ops_set_sar_specs(struct ieee80211_hw *hw,
+ 				 const struct cfg80211_sar_specs *sar)
+ {
+@@ -984,7 +984,7 @@ const struct ieee80211_ops rtw_ops = {
+ 	.hw_scan		= rtw_ops_hw_scan,
+ 	.cancel_hw_scan		= rtw_ops_cancel_hw_scan,
+ 	.sta_rc_update		= rtw_ops_sta_rc_update,
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(BUILD_OPENWRT)
+ 	.set_sar_specs          = rtw_ops_set_sar_specs,
+ #endif
+ #ifdef CONFIG_PM
+diff --git a/main.c b/main.c
+index e5cedf5..16dc122 100644
+--- a/main.c
++++ b/main.c
+@@ -2326,7 +2326,7 @@ int rtw_register_hw(struct rtw_dev *rtwdev, struct ieee80211_hw *hw)
+ 	rtw_set_supported_band(hw, rtwdev->chip);
+ 	SET_IEEE80211_PERM_ADDR(hw, rtwdev->efuse.addr);
+ 
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(BUILD_OPENWRT)
+ 	hw->wiphy->sar_capa = &rtw_sar_capa;
+ #endif
+ 
+diff --git a/main.h b/main.h
+index 676d44d..1ac38d1 100644
+--- a/main.h
++++ b/main.h
+@@ -33,7 +33,7 @@
+ #define RHEL_RELEASE_VERSION(a, b) a<<8 & b
+ #endif
+ 
+-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)) || defined(RHEL_RELEASE) && (RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8,0))
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0) && !defined(BUILD_OPENWRT)) || defined(RHEL_RELEASE) && (RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8,0))
+ /* see Documentation/timers/timers-howto.rst for the thresholds */
+ static inline void fsleep(unsigned long usecs)
+ {
+diff --git a/phy.c b/phy.c
+index 5753462..0f34dde 100644
+--- a/phy.c
++++ b/phy.c
+@@ -10,7 +10,7 @@
+ #include "phy.h"
+ #include "debug.h"
+ #include "regd.h"
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(BUILD_OPENWRT)
+ #include "sar.h"
+ #endif
+ 
+@@ -2070,7 +2070,7 @@ err:
+ 	return (s8)rtwdev->chip->max_power_index;
+ }
+ 
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(BUILD_OPENWRT)
+ static s8 rtw_phy_get_tx_power_sar(struct rtw_dev *rtwdev, u8 sar_band,
+ 				   u8 rf_path, u8 rate)
+ {
+@@ -2104,7 +2104,7 @@ void rtw_get_tx_power_params(struct rtw_dev *rtwdev, u8 path, u8 rate, u8 bw,
+ 	s8 *offset = &pwr_param->pwr_offset;
+ 	s8 *limit = &pwr_param->pwr_limit;
+ 	s8 *remnant = &pwr_param->pwr_remnant;
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(BUILD_OPENWRT)
+ 	s8 *sar = &pwr_param->pwr_sar;
+ #endif
+ 
+@@ -2130,7 +2130,7 @@ void rtw_get_tx_power_params(struct rtw_dev *rtwdev, u8 path, u8 rate, u8 bw,
+ 					    rate, ch, regd);
+ 	*remnant = (rate <= DESC_RATE11M ? dm_info->txagc_remnant_cck :
+ 		    dm_info->txagc_remnant_ofdm);
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(BUILD_OPENWRT)
+ 	*sar = rtw_phy_get_tx_power_sar(rtwdev, hal->sar_band, path, rate);
+ #endif
+ }
+diff --git a/sar.c b/sar.c
+index 475e79c..4055be4 100644
+--- a/sar.c
++++ b/sar.c
+@@ -3,7 +3,7 @@
+  */
+ 
+ #include <linux/version.h>
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(BUILD_OPENWRT)
+ #include "sar.h"
+ #include "phy.h"
+ #include "debug.h"
+diff --git a/sar.h b/sar.h
+index 75f6118..cddfd6c 100644
+--- a/sar.h
++++ b/sar.h
+@@ -9,7 +9,7 @@
+  */
+ #define RTW_COMMON_SAR_FCT 2
+ 
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(BUILD_OPENWRT)
+ struct rtw_sar_arg {
+ 	u8 sar_band;
+ 	u8 path;
