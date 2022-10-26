@@ -10,7 +10,7 @@ FS_MENU:=Filesystems
 define KernelPackage/fs-9p
   SUBMENU:=$(FS_MENU)
   TITLE:=Plan 9 Resource Sharing Support
-  DEPENDS:=+kmod-9pnet
+  DEPENDS:=+kmod-9pnet +LINUX_6_1:kmod-fs-netfs
   KCONFIG:=\
 	CONFIG_9P_FS \
 	CONFIG_9P_FS_POSIX_ACL=n \
@@ -256,7 +256,9 @@ define KernelPackage/fs-fscache
 	CONFIG_FSCACHE_OBJECT_LIST=n \
 	CONFIG_CACHEFILES \
 	CONFIG_CACHEFILES_DEBUG=n \
-	CONFIG_CACHEFILES_HISTOGRAM=n
+	CONFIG_CACHEFILES_HISTOGRAM=n \
+	CONFIG_CACHEFILES_ERROR_INJECTION=n@ge5.17 \
+	CONFIG_CACHEFILES_ONDEMAND=n@ge5.19
   FILES:= \
 	$(LINUX_DIR)/fs/fscache/fscache.ko \
 	$(LINUX_DIR)/fs/cachefiles/cachefiles.ko
@@ -367,7 +369,7 @@ $(eval $(call KernelPackage,fs-msdos))
 define KernelPackage/fs-netfs
   SUBMENU:=$(FS_MENU)
   TITLE:=Network Filesystems support
-  DEPENDS:=@LINUX_5_15
+  DEPENDS:=@!LINUX_5_10
   KCONFIG:= CONFIG_NETFS_SUPPORT
   FILES:=$(LINUX_DIR)/fs/netfs/netfs.ko
   AUTOLOAD:=$(call AutoLoad,28,netfs)
