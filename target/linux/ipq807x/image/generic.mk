@@ -119,3 +119,15 @@ define Device/zte_mf269
 	DEVICE_PACKAGES := ipq-wifi-zte_mf269 uboot-envtools
 endef
 TARGET_DEVICES += zte_mf269
+
+define Device/tplink_tl-er2260t
+	$(call Device/FitImage)
+	$(call Device/UbiFit)  
+	DEVICE_DTS := ipq8074-tl-er2260t
+	DEVICE_DTS_CONFIG := config@hk07
+	BLOCKSIZE := 128k
+	PAGESIZE := 2048
+	BOARD_NAME := tplink,tl-er2260t
+	DEVICE_TITLE := TPLINK TL-ER2260T
+endef
+TARGET_DEVICES += tplink_tl-er2260t

@@ -1,0 +1,223 @@
+diff --git a/config b/config
+index bdefadd..1208d9c 100755
+--- a/config
++++ b/config
+@@ -79,7 +79,16 @@ endif
+ 
+ #GCC version, 3 or 4
+ #GCC_VER=4
++#TARGET_DEVICE=$(TARGET_BOARD)
+ 
++ER2260T=FALSE
++
++ifeq ($(TARGET_BOARD), DEVICE_tplink_tl-er2260t)
++	ER2260T=TRUE
++endif
++
++#$(warning TARGET_DEVICE=$(TARGET_DEVICE))
++$(warning TARGET_BOARD=$(TARGET_BOARD))
+ #############################################
+ #	MIPS Linux2.6 Specfic Setting       #
+ #############################################
+@@ -369,7 +378,7 @@ endif
+ ifeq ($(MINI_SSDK), enable)
+ 	IN_FDB_MINI=TRUE
+ 	IN_MISC_MINI=TRUE
+-	IN_PORTCONTROL_MINI=TRUE
++	IN_PORTCONTROL_MINI=FALSE
+ 	IN_QOS_MINI=TRUE
+ 	IN_COSMAP_MINI=TRUE
+ 	IN_PORTVLAN_MINI=TRUE
+@@ -382,7 +391,7 @@ ifeq ($(MINI_SSDK), enable)
+ 	IN_QM_MINI=TRUE
+ 	IN_UNIPHY_MINI=TRUE
+ 	IN_IP_MINI=TRUE
+-	IN_SFP=FALSE
++	IN_SFP=TRUE
+ 	IN_PTP=FALSE
+ 
+ 	#disable modules for MINI HPPE/CPPE/APPE/MPPE
+diff --git a/make/linux_opt.mk b/make/linux_opt.mk
+index 2e85f39..a9f986a 100755
+--- a/make/linux_opt.mk
++++ b/make/linux_opt.mk
+@@ -1,6 +1,10 @@
+ MODULE_CFLAG :=
+ LOCAL_CFLAGS :=
+ 
++ifeq (TRUE, $(ER2260T))
++  MODULE_CFLAG += -DER2260T
++endif
++
+ ifeq (TRUE, $(SWCONFIG))
+   MODULE_CFLAG += -DIN_SWCONFIG
+ endif
+diff --git a/src/hsl/phy/hsl_phy.c b/src/hsl/phy/hsl_phy.c
+index 5d994d0..23d0aed 100755
+--- a/src/hsl/phy/hsl_phy.c
++++ b/src/hsl/phy/hsl_phy.c
+@@ -373,6 +373,45 @@ int ssdk_phy_driver_init(a_uint32_t dev_id, ssdk_init_cfg *cfg)
+ 			ssdk_phy_driver[i].init(dev_id, ssdk_phy_driver[i].port_bmp[dev_id]);
+ 		}
+ 	}
++
++	#ifdef ER2260T
++	#pragma message ("device is tl-er2260t!")
++	a_uint32_t ret;
++	ret = gpio_request(494, NULL);//sfp1 10G speed
++	ret = gpio_request(496, NULL);//sfp1 1G speed
++	if (ret != 0)
++	{
++		SSDK_ERROR("gpio_request  failed, return is %d", ret);
++	}
++	else
++	{
++		SSDK_INFO("SFP1 gpio set ");
++	}
++	
++	ret = gpio_request(498, NULL);//sfp2 10G speed
++	ret = gpio_request(506, NULL);//sfp2 1G speed
++	if (ret != 0)
++	{
++		SSDK_ERROR("gpio_request failed, return is %d", ret);
++	}
++	else
++	{
++		SSDK_INFO("SFP2 gpio set");
++	}
++	ret = gpio_direction_output(494, 0);
++	ret = gpio_direction_output(496, 0);
++	if (ret)
++	{
++		SSDK_ERROR("gpio set failed, ret:%d\n", ret);
++	}
++	ret = gpio_direction_output(498, 0);
++	ret = gpio_direction_output(506, 0);
++	if (ret)
++	{
++		SSDK_ERROR("gpio set failed, ret:%d\n", ret);
++	}
++	#endif
++
+ 	return 0;
+ }
+ 
+@@ -1281,6 +1320,16 @@ sw_error_t ssdk_phy_driver_cleanup(a_uint32_t dev_id)
+ {
+ 	a_uint32_t i = 0;
+ 
++	#ifdef ER2260T
++
++	//gpio_free(493);//sfp1 link act
++	gpio_free(494);//sfp1 10G speed
++	gpio_free(496);//sfp1 1G speed
++	//gpio_free(497);//sfp2 link act
++	gpio_free(498);//sfp2 10G speed
++	gpio_free(506);//sfp2 1G speed
++	#endif
++
+ 	for (i = 0; i < MAX_PHY_CHIP;i++) {
+ 		if (ssdk_phy_driver[i].port_bmp[dev_id] != 0 &&
+ 				ssdk_phy_driver[i].exit != NULL) {
+diff --git a/src/hsl/phy/sfp_phy.c b/src/hsl/phy/sfp_phy.c
+index 284de16..66be5fe 100755
+--- a/src/hsl/phy/sfp_phy.c
++++ b/src/hsl/phy/sfp_phy.c
+@@ -31,6 +31,13 @@
+ #include "ssdk_phy_i2c.h"
+ #include "ssdk_dts.h"
+ 
++#ifdef IN_SFP
++#include "fal_sfp.h"
++#include "sfp_reg.h"
++#include "sfp.h"
++#include <linux/of_gpio.h>
++#include <linux/gpio.h>
++#endif
+ /******************************************************************************
+ *
+ * sfp_phy_init -
+@@ -271,6 +278,83 @@ sw_error_t sfp_phy_interface_get_mode_status(a_uint32_t dev_id,
+ 	SW_RTN_ON_NULL(port_phyinfo);
+ 	rv = hsl_port_phydev_get(dev_id, port_id, &phydev);
+ 	SW_RTN_ON_ERROR(rv);
++
++	#ifdef IN_SFP
++	#ifdef ER2260T
++	#pragma message ("device is tl-er2260t!")
++	if (port_id == 5)
++	{
++
++	}
++	else if(port_id == 6)
++	{
++		return SW_OK;
++	}
++	#endif
++
++
++	
++	/* read sfp port status firstly */
++	struct port_phy_status sfp_statustmp= {0};
++	adpt_api_t *tmp_p_api;
++
++	SW_RTN_ON_NULL(tmp_p_api = adpt_api_ptr_get(dev_id));
++	rv = tmp_p_api->adpt_port_phy_status_get(dev_id, port_id, &sfp_statustmp);
++	SW_RTN_ON_ERROR(rv);
++
++
++	if (sfp_statustmp.link_status == PORT_LINK_UP) 
++	{
++		#ifdef ER2260T
++		if (port_id ==5)
++		{
++			//gpio_set_value(497, 1);//sfp2 link act
++			if (*interface_mode_status == PORT_10GBASE_R)
++			{
++				gpio_set_value(498, 1);//sfp2 10G speed
++				gpio_set_value(506, 0);//sfp2 1G speed
++			}
++			else
++			{
++				gpio_set_value(498, 0); // sfp2 10G speed
++				gpio_set_value(506, 1); // sfp2 1G speed
++			}
++		}
++			if (port_id == 6)
++		{
++			//gpio_set_value(493, 1);//sfp1 link act
++			if (*interface_mode_status == PORT_10GBASE_R)
++			{
++				gpio_set_value(494, 1);//sfp1 10G speed
++				gpio_set_value(496, 0);//sfp1 1G speed
++			}
++			else
++			{
++				gpio_set_value(494, 0);//sfp1 10G speed
++				gpio_set_value(496, 1);//sfp1 1G speed
++			}
++		}
++		#endif
++	}
++	else 
++	{
++		#ifdef ER2260T
++		if (port_id == 5)
++		{
++			// gpio_set_value(497, 0);//sfp2 link act
++			gpio_set_value(498, 0); // sfp2 10G speed
++			gpio_set_value(506, 0); // sfp2 1G speed
++		}
++		else if (port_id == 6)
++		{
++			// gpio_set_value(493, 0);//sfp1 link act
++			gpio_set_value(494, 0); // sfp1 10G speed
++			gpio_set_value(496, 0); // sfp1 1G speed
++		}
++		#endif
++	}
++	#endif
++
+ 	rv = qca_phy_i2c_mii_read(dev_id, SFP_E2PROM_ADDR, SFP_SPEED_ADDR,
+ 		&reg_data);
+ 	SW_RTN_ON_ERROR(rv);

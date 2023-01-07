@@ -25,6 +25,7 @@ platform_do_upgrade() {
 		fw_setenv upgrade_available 1
 		nand_do_upgrade "$1"
 		;;
+	tplink,tl-er2260t|\
 	edimax,cax1800)
 		nand_do_upgrade "$1"
 		;;
