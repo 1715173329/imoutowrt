@@ -1,0 +1,32 @@
+From e904ca928a3f6d73df062da63a91e346e084a63a Mon Sep 17 00:00:00 2001
+From: Kever Yang <kever.yang@rock-chips.com>
+Date: Mon, 9 Jan 2023 16:57:59 +0100
+Subject: arm64: dts: rockchip: Add rk3588-evb1 board
+
+Add board file for the RK3588 evaluation board. While the hardware
+offers plenty of peripherals and connectivity this basic implementation
+just handles things required to successfully boot Linux from eMMC,
+connect via UART or Ethernet.
+
+Signed-off-by: Kever Yang <kever.yang@rock-chips.com>
+[rebase, update commit message, use EVB1 for SoC bringup]
+Reviewed-by: Michael Riesch <michael.riesch@wolfvision.net>
+Signed-off-by: Sebastian Reichel <sebastian.reichel@collabora.com>
+Reviewed-by: Jagan Teki <jagan@edgeble.ai>
+Link: https://lore.kernel.org/r/20230109155801.51642-6-sebastian.reichel@collabora.com
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+---
+ arch/arm64/boot/dts/rockchip/Makefile            |   1 +
+ arch/arm64/boot/dts/rockchip/rk3588-evb1-v10.dts | 129 +++++++++++++++++++++++
+ 2 files changed, 130 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/rockchip/rk3588-evb1-v10.dts
+
+--- a/arch/arm64/boot/dts/rockchip/Makefile
++++ b/arch/arm64/boot/dts/rockchip/Makefile
+@@ -73,3 +73,6 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-so
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-bpi-r2-pro.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-evb1-v10.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-rock-3a.dtb
++dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-evb1-v10.dtb
++dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b.dtb
++dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-rock-5a.dtb
