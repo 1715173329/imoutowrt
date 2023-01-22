@@ -2,7 +2,11 @@
 
 /dts-v1/;
 
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/pinctrl/rockchip.h>
 #include "rk3588.dtsi"
+#include "rk3588-rk806-single.dtsi"
 
 / {
 	model = "Radxa ROCK 5 Model B";
@@ -12,10 +16,26 @@
 		mmc0 = &sdhci;
 		mmc1 = &sdmmc;
 		serial2 = &uart2;
+
+		led-boot = &blue_led;
+		led-failsafe = &blue_led;
+		led-running = &blue_led;
+		led-upgrade = &blue_led;
 	};
 
 	chosen {
 		stdout-path = "serial2:1500000n8";
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&status_led_pin>;
+
+		blue_led: led-blue {
+			gpios = <&gpio0 RK_PB7 GPIO_ACTIVE_HIGH>;
+			label = "status:blue";
+		};
 	};
 
 	vcc12v_dcin: vcc12v-dcin {
@@ -36,21 +56,24 @@
 		regulator-max-microvolt = <5000000>;
 		vin-supply = <&vcc12v_dcin>;
 	};
+
+	vcc_1v1_nldo_s3: vcc-1v1-nldo-s3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_1v1_nldo_s3";
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-min-microvolt = <1100000>;
+		regulator-max-microvolt = <1100000>;
+		vin-supply = <&vcc5v0_sys>;
+	};
 };
 
-&cpu_l0 {
-	cpu-supply = <&vdd_cpu_lit_s0>;
-	mem-supply = <&vdd_cpu_lit_mem_s0>;
-};
-
-&cpu_b0 {
-	cpu-supply = <&vdd_cpu_big0_s0>;
-	mem-supply = <&vdd_cpu_big0_mem_s0>;
-};
-
-&cpu_b2 {
-	cpu-supply = <&vdd_cpu_big1_s0>;
-	mem-supply = <&vdd_cpu_big1_mem_s0>;
+&pinctrl {
+	gpio-leds {
+		status_led_pin: led-status-pin {
+			rockchip,pins = <0 RK_PB7 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
 };
 
 &sdhci {
