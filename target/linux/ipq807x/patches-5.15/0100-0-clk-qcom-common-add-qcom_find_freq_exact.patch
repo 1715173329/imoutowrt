@@ -1,0 +1,54 @@
+From 975dc57e3c64ddc37447da78f2b2a64eb45d1792 Mon Sep 17 00:00:00 2001
+From: Christian Marangi <ansuelsmth@gmail.com>
+Date: Mon, 16 Jan 2023 22:43:13 +0100
+Subject: [PATCH 3/6] clk: qcom: common: add qcom_find_freq_exact
+
+Currently qcom_find_freq will always find a freq following a CEIL logic
+but we may need to find the exact requesting frequency or return NULL.
+
+Add qcom_find_freq_exact to perform a search of the exact requested
+frequency.
+
+Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
+---
+ drivers/clk/qcom/common.c | 17 +++++++++++++++++
+ drivers/clk/qcom/common.h |  2 ++
+ 2 files changed, 19 insertions(+)
+
+--- a/drivers/clk/qcom/common.c
++++ b/drivers/clk/qcom/common.c
+@@ -57,6 +57,23 @@ const struct freq_tbl *qcom_find_freq_fl
+ }
+ EXPORT_SYMBOL_GPL(qcom_find_freq_floor);
+ 
++const
++struct freq_tbl *qcom_find_freq_exact(const struct freq_tbl *f, unsigned long rate)
++{
++	if (!f)
++		return NULL;
++
++	if (!f->freq)
++		return f;
++
++	for (; f->freq; f++)
++		if (rate == f->freq)
++			return f;
++
++	return NULL;
++}
++EXPORT_SYMBOL_GPL(qcom_find_freq_exact);
++
+ int qcom_find_src_index(struct clk_hw *hw, const struct parent_map *map, u8 src)
+ {
+ 	int i, num_parents = clk_hw_get_num_parents(hw);
+--- a/drivers/clk/qcom/common.h
++++ b/drivers/clk/qcom/common.h
+@@ -45,6 +45,8 @@ extern const struct freq_tbl *qcom_find_
+ 					     unsigned long rate);
+ extern const struct freq_tbl *qcom_find_freq_floor(const struct freq_tbl *f,
+ 						   unsigned long rate);
++extern const struct freq_tbl *qcom_find_freq_exact(const struct freq_tbl *f,
++						   unsigned long rate);
+ extern void
+ qcom_pll_set_fsm_mode(struct regmap *m, u32 reg, u8 bias_count, u8 lock_count);
+ extern int qcom_find_src_index(struct clk_hw *hw, const struct parent_map *map,

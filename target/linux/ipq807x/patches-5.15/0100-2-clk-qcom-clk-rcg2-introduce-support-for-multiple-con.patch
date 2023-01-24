@@ -1,8 +1,8 @@
-From 032be4f49dda786fea9e1501212f6cd09a7ded96 Mon Sep 17 00:00:00 2001
+From 015a684ec5914f0ae8a8a83302f3a75775b71284 Mon Sep 17 00:00:00 2001
 From: Christian Marangi <ansuelsmth@gmail.com>
-Date: Thu, 3 Nov 2022 14:49:43 +0100
-Subject: [PATCH] clk: qcom: clk-rcg2: introduce support for multiple conf for
- same freq
+Date: Mon, 16 Jan 2023 23:16:04 +0100
+Subject: [PATCH 5/6] clk: qcom: clk-rcg2: introduce support for multiple conf
+ for same freq
 
 Some RCG frequency can be reached by multiple configuration.
 
@@ -28,9 +28,9 @@ one that is less different than the requested one.
 Tested-by: Robert Marko <robimarko@gmail.com>
 Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
 ---
- drivers/clk/qcom/clk-rcg.h  | 14 ++++++-
- drivers/clk/qcom/clk-rcg2.c | 84 +++++++++++++++++++++++++++++++++----
- 2 files changed, 88 insertions(+), 10 deletions(-)
+ drivers/clk/qcom/clk-rcg.h  |  14 +++-
+ drivers/clk/qcom/clk-rcg2.c | 129 ++++++++++++++++++++++++++++++++----
+ 2 files changed, 129 insertions(+), 14 deletions(-)
 
 --- a/drivers/clk/qcom/clk-rcg.h
 +++ b/drivers/clk/qcom/clk-rcg.h
@@ -69,8 +69,8 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  }
  
 +static void
-+clk_rcg2_select_conf(struct clk_hw *hw, struct freq_tbl *f_tbl,
-+		     const struct freq_tbl *f, unsigned long req_rate)
++_freq_tbl_determine_parent(struct clk_hw *hw, struct freq_tbl *f_tbl,
++			   const struct freq_tbl *f, unsigned long req_rate)
 +{
 +	unsigned long best_rate = 0, parent_rate, rate;
 +	const struct freq_conf *conf, *best_conf;
@@ -136,7 +136,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
 +	 * Try to find the bast one if we have this kind of freq_table.
 +	 */
 +	if (f->confs)
-+		clk_rcg2_select_conf(hw, &f_tbl, f, rate);
++		_freq_tbl_determine_parent(hw, &f_tbl, f, rate);
 +
 +	index = qcom_find_src_index(hw, rcg->parent_map, f_tbl.src);
  	if (index < 0)
@@ -157,8 +157,7 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
 +			rate *= f_tbl.pre_div + 1;
  		}
  
--		if (f->n) {
-+		if (f_tbl.n) {
+ 		if (f->n) {
  			u64 tmp = rate;
 -			tmp = tmp * f->n;
 -			do_div(tmp, f->m);
@@ -176,15 +175,50 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
  
  	return 0;
  }
-@@ -357,6 +414,7 @@ static int __clk_rcg2_set_rate(struct cl
+@@ -352,40 +409,86 @@ static int clk_rcg2_configure(struct clk
+ 	return update_config(rcg);
+ }
+ 
+-static int __clk_rcg2_set_rate(struct clk_hw *hw, unsigned long rate)
++static void
++__clk_rcg2_select_conf(struct clk_hw *hw, struct freq_tbl *f_tbl,
++		       const struct freq_tbl *f, u8 parent_index)
++{
++	const struct freq_conf *conf, *best_conf;
++	struct clk_rcg2 *rcg = to_clk_rcg2(hw);
++	int index, i;
++
++	/* Search in each provided config the one that is near the wanted rate */
++	for (i = 0, conf = f->confs; i < f->confs_num; i++, conf++) {
++		index = qcom_find_src_index(hw, rcg->parent_map, conf->src);
++		if (index < 0)
++			continue;
++
++		if (index == parent_index)
++			break;
++	}
++
++	/*
++	 * Very unlikely.
++	 * Force the first conf if we can't find a correct config.
++	 */
++	if (unlikely(i == f->confs_num))
++		best_conf = f->confs;
++
++	/* Apply the config */
++	f_tbl->src = best_conf->src;
++	f_tbl->pre_div = best_conf->pre_div;
++	f_tbl->m = best_conf->m;
++	f_tbl->n = best_conf->n;
++}
++
++static int __clk_rcg2_set_rate(struct clk_hw *hw, unsigned long rate, u8 index)
  {
  	struct clk_rcg2 *rcg = to_clk_rcg2(hw);
  	const struct freq_tbl *f;
 +	struct freq_tbl f_tbl;
  
- 	switch (policy) {
- 	case FLOOR:
-@@ -372,7 +430,15 @@ static int __clk_rcg2_set_rate(struct cl
+ 	f = qcom_find_freq_exact(rcg->freq_tbl, rate);
  	if (!f)
  		return -EINVAL;
  
@@ -192,12 +226,45 @@ Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
 +	f_tbl = *f;
 +	/*
 +	 * A single freq may be reached by multiple configuration.
-+	 * Try to find the best one if we have this kind of freq_table.
++	 * Select the conf for the requested parent.
 +	 */
-+	if (f->confs)
-+		clk_rcg2_select_conf(hw, &f_tbl, f, rate);
++	if (f->confs) {
++		/* Use current parent if not set */
++		if (index < 0)
++			index = clk_hw_get_parent_index(hw);
++
++		__clk_rcg2_select_conf(hw, &f_tbl, f, index);
++	}
 +
 +	return clk_rcg2_configure(rcg, &f_tbl);
  }
  
  static int clk_rcg2_set_rate(struct clk_hw *hw, unsigned long rate,
+ 			    unsigned long parent_rate)
+ {
+-	return __clk_rcg2_set_rate(hw, rate);
++	return __clk_rcg2_set_rate(hw, rate, -1);
+ }
+ 
+ static int clk_rcg2_set_floor_rate(struct clk_hw *hw, unsigned long rate,
+ 				   unsigned long parent_rate)
+ {
+-	return __clk_rcg2_set_rate(hw, rate);
++	return __clk_rcg2_set_rate(hw, rate, -1);
+ }
+ 
+ static int clk_rcg2_set_rate_and_parent(struct clk_hw *hw,
+ 		unsigned long rate, unsigned long parent_rate, u8 index)
+ {
+-	return __clk_rcg2_set_rate(hw, rate);
++	return __clk_rcg2_set_rate(hw, rate, index);
+ }
+ 
+ static int clk_rcg2_set_floor_rate_and_parent(struct clk_hw *hw,
+ 		unsigned long rate, unsigned long parent_rate, u8 index)
+ {
+-	return __clk_rcg2_set_rate(hw, rate);
++	return __clk_rcg2_set_rate(hw, rate, index);
+ }
+ 
+ static int clk_rcg2_get_duty_cycle(struct clk_hw *hw, struct clk_duty *duty)

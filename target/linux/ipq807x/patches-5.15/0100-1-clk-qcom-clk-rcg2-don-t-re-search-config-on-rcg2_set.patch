@@ -1,0 +1,84 @@
+From 2078f44726edbcace3f69f9997770543cf988835 Mon Sep 17 00:00:00 2001
+From: Christian Marangi <ansuelsmth@gmail.com>
+Date: Mon, 16 Jan 2023 23:06:35 +0100
+Subject: [PATCH 4/6] clk: qcom: clk-rcg2: don't re-search config on
+ rcg2_set_rate
+
+Currently the rcg2 driver search the rate to apply 2 times.
+- In _freq_tbl_determine_rate for the determine_rate function used by
+  core clk to understand the best rate to set with set_rate
+- In rcg2_set_rate where the suggested rate is not trusted and searched
+  another time using a CEIL or FLOOR policy.
+
+This is fundamentally wrong as we are ignoring what core clock is
+deciding and just setting whatever clock configuration we want for the
+suggested clock. The problem is in the fact that the correct clock
+should have already be searched and selected with the determine_rate
+function and set_rate should just apply whatever clock was provided.
+
+Rework the function using the find_req_exact and by trusting whatever
+core clk is asking to set.
+
+Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
+---
+ drivers/clk/qcom/clk-rcg2.c | 23 ++++++-----------------
+ 1 file changed, 6 insertions(+), 17 deletions(-)
+
+--- a/drivers/clk/qcom/clk-rcg2.c
++++ b/drivers/clk/qcom/clk-rcg2.c
+@@ -352,23 +352,12 @@ static int clk_rcg2_configure(struct clk
+ 	return update_config(rcg);
+ }
+ 
+-static int __clk_rcg2_set_rate(struct clk_hw *hw, unsigned long rate,
+-			       enum freq_policy policy)
++static int __clk_rcg2_set_rate(struct clk_hw *hw, unsigned long rate)
+ {
+ 	struct clk_rcg2 *rcg = to_clk_rcg2(hw);
+ 	const struct freq_tbl *f;
+ 
+-	switch (policy) {
+-	case FLOOR:
+-		f = qcom_find_freq_floor(rcg->freq_tbl, rate);
+-		break;
+-	case CEIL:
+-		f = qcom_find_freq(rcg->freq_tbl, rate);
+-		break;
+-	default:
+-		return -EINVAL;
+-	}
+-
++	f = qcom_find_freq_exact(rcg->freq_tbl, rate);
+ 	if (!f)
+ 		return -EINVAL;
+ 
+@@ -378,25 +367,25 @@ static int __clk_rcg2_set_rate(struct cl
+ static int clk_rcg2_set_rate(struct clk_hw *hw, unsigned long rate,
+ 			    unsigned long parent_rate)
+ {
+-	return __clk_rcg2_set_rate(hw, rate, CEIL);
++	return __clk_rcg2_set_rate(hw, rate);
+ }
+ 
+ static int clk_rcg2_set_floor_rate(struct clk_hw *hw, unsigned long rate,
+ 				   unsigned long parent_rate)
+ {
+-	return __clk_rcg2_set_rate(hw, rate, FLOOR);
++	return __clk_rcg2_set_rate(hw, rate);
+ }
+ 
+ static int clk_rcg2_set_rate_and_parent(struct clk_hw *hw,
+ 		unsigned long rate, unsigned long parent_rate, u8 index)
+ {
+-	return __clk_rcg2_set_rate(hw, rate, CEIL);
++	return __clk_rcg2_set_rate(hw, rate);
+ }
+ 
+ static int clk_rcg2_set_floor_rate_and_parent(struct clk_hw *hw,
+ 		unsigned long rate, unsigned long parent_rate, u8 index)
+ {
+-	return __clk_rcg2_set_rate(hw, rate, FLOOR);
++	return __clk_rcg2_set_rate(hw, rate);
+ }
+ 
+ static int clk_rcg2_get_duty_cycle(struct clk_hw *hw, struct clk_duty *duty)

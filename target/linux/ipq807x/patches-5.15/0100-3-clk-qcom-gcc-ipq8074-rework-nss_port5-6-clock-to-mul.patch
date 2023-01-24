@@ -1,8 +1,8 @@
-From f778553f296792f4d1e8b3552603ad6116ea3eb3 Mon Sep 17 00:00:00 2001
+From 5d18a2b92bff146cb90b556512539a09eda7e556 Mon Sep 17 00:00:00 2001
 From: Christian Marangi <ansuelsmth@gmail.com>
-Date: Thu, 3 Nov 2022 14:49:44 +0100
-Subject: [PATCH] clk: qcom: gcc-ipq8074: rework nss_port5/6 clock to multiple
- conf
+Date: Wed, 19 Oct 2022 19:53:11 +0200
+Subject: [PATCH 6/6] clk: qcom: gcc-ipq8074: rework nss_port5/6 clock to
+ multiple conf
 
 Rework nss_port5/6 to use the new multiple configuration implementation
 and correctly fix the clocks for these port under some corner case.
