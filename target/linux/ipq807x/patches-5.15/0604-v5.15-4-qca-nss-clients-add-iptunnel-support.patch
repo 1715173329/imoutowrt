@@ -22,7 +22,7 @@
  #endif /* __NET_IP_TUNNELS_H */
 --- a/net/ipv6/ip6_tunnel.c
 +++ b/net/ipv6/ip6_tunnel.c
-@@ -2429,6 +2429,26 @@ nla_put_failure:
+@@ -2430,6 +2430,26 @@ nla_put_failure:
  	return -EMSGSIZE;
  }
 
@@ -51,7 +51,7 @@
  	struct ip6_tnl *tunnel = netdev_priv(dev);
 --- a/net/ipv6/sit.c
 +++ b/net/ipv6/sit.c
-@@ -1794,6 +1794,23 @@ nla_put_failure:
+@@ -1796,6 +1796,23 @@ nla_put_failure:
  	return -EMSGSIZE;
  }
 

@@ -16,9 +16,9 @@ diff --git a/net/bridge/br_input.c b/net/bridge/br_input.c
 index 26dc637ad564b..6d3ce7699b9b1 100644
 --- a/net/bridge/br_input.c
 +++ b/net/bridge/br_input.c
-@@ -386,7 +386,7 @@ rx_handler_result_t br_handle_frame(struct sk_buff **pskb)
- 				return RX_HANDLER_PASS;
- 			}
+@@ -423,7 +423,7 @@ rx_handler_result_t br_handle_frame(struct sk_buff **pskb)
+ 			br_handle_local_finish) == 1) {
+ 			return RX_HANDLER_PASS;
  		}
 -		break;
 +		goto drop;

@@ -8,7 +8,7 @@
 
  #include <linux/nsproxy.h>
  #include <net/net_namespace.h>
-@@ -251,6 +252,25 @@ struct ppp_net {
+@@ -253,6 +254,25 @@ struct ppp_net {
  #define seq_before(a, b)	((s32)((a) - (b)) < 0)
  #define seq_after(a, b)		((s32)((a) - (b)) > 0)
 
@@ -34,7 +34,7 @@
  /* Prototypes. */
  static int ppp_unattached_ioctl(struct net *net, struct ppp_file *pf,
  			struct file *file, unsigned int cmd, unsigned long arg);
-@@ -3445,7 +3465,10 @@ ppp_connect_channel(struct channel *pch, int unit)
+@@ -3452,7 +3472,10 @@ ppp_connect_channel(struct channel *pch, int unit)
  	struct ppp_net *pn;
  	int ret = -ENXIO;
  	int hdrlen;
@@ -45,7 +45,7 @@
  	pn = ppp_pernet(pch->chan_net);
 
  	mutex_lock(&pn->all_ppp_mutex);
-@@ -3477,13 +3500,40 @@ ppp_connect_channel(struct channel *pch, int unit)
+@@ -3484,13 +3507,40 @@ ppp_connect_channel(struct channel *pch, int unit)
  	++ppp->n_channels;
  	pch->ppp = ppp;
  	refcount_inc(&ppp->file.refcnt);
@@ -87,7 +87,7 @@
  	return ret;
  }
 
-@@ -3501,6 +3551,13 @@ ppp_disconnect_channel(struct channel *pch)
+@@ -3508,6 +3558,13 @@ ppp_disconnect_channel(struct channel *pch)
  	pch->ppp = NULL;
  	write_unlock_bh(&pch->upl);
  	if (ppp) {
@@ -101,7 +101,7 @@
  		/* remove it from the ppp unit's list */
  		ppp_lock(ppp);
  		list_del(&pch->clist);
-@@ -3580,6 +3637,222 @@ static void *unit_find(struct idr *p, int n)
+@@ -3587,6 +3644,222 @@ static void *unit_find(struct idr *p, int n)
  	return idr_find(p, n);
  }
 
@@ -324,7 +324,7 @@
  /* Module/initialization stuff */
 
  module_init(ppp_init);
-@@ -3596,6 +3869,7 @@ EXPORT_SYMBOL(ppp_input_error);
+@@ -3603,6 +3876,7 @@ EXPORT_SYMBOL(ppp_input_error);
  EXPORT_SYMBOL(ppp_output_wakeup);
  EXPORT_SYMBOL(ppp_register_compressor);
  EXPORT_SYMBOL(ppp_unregister_compressor);
@@ -362,7 +362,7 @@ index 3619520..3b06b44 100644
 
  		error = ppp_register_net_channel(dev_net(dev), &po->chan);
  		if (error) {
-@@ -994,9 +995,80 @@ static int pppoe_fill_forward_path(struct net_device_path_ctx *ctx,
+@@ -995,9 +996,80 @@ static int pppoe_fill_forward_path(struct net_device_path_ctx *ctx,
  	return 0;
  }
 
@@ -472,7 +472,7 @@ diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
 index a73d00a..edde18b 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -1652,6 +1652,24 @@ enum netdev_extra_priv_flags {
+@@ -1680,6 +1680,24 @@ enum netdev_extra_priv_flags {
  	IFF_NO_IP_ALIGN			= 1<<0,
  };
 
@@ -497,7 +497,7 @@ index a73d00a..edde18b 100644
  #define IFF_802_1Q_VLAN			IFF_802_1Q_VLAN
  #define IFF_EBRIDGE			IFF_EBRIDGE
  #define IFF_BONDING			IFF_BONDING
-@@ -1987,6 +2005,7 @@ struct net_device {
+@@ -2015,6 +2033,7 @@ struct net_device {
  	unsigned int		flags;
  	unsigned int		priv_flags;
  	unsigned int		extra_priv_flags;

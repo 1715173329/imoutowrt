@@ -98,7 +98,7 @@ diff --git a/net/netfilter/nf_conntrack_core.c b/net/netfilter/nf_conntrack_core
 index 082a2fd8d85b15..369aeabb94fe29 100644
 --- a/net/netfilter/nf_conntrack_core.c
 +++ b/net/netfilter/nf_conntrack_core.c
-@@ -729,6 +729,9 @@ static void nf_ct_gc_expired(struct nf_conn *ct)
+@@ -761,6 +761,9 @@ static void nf_ct_gc_expired(struct nf_conn *ct)
  	if (!refcount_inc_not_zero(&ct->ct_general.use))
  		return;
 
@@ -108,7 +108,7 @@ index 082a2fd8d85b15..369aeabb94fe29 100644
  	if (nf_ct_should_gc(ct))
  		nf_ct_kill(ct);
 
-@@ -795,6 +798,9 @@ __nf_conntrack_find_get(struct net *net, const struct nf_conntrack_zone *zone,
+@@ -827,6 +830,9 @@ __nf_conntrack_find_get(struct net *net, const struct nf_conntrack_zone *zone,
  		 */
  		ct = nf_ct_tuplehash_to_ctrack(h);
  		if (likely(refcount_inc_not_zero(&ct->ct_general.use))) {
@@ -118,7 +118,7 @@ index 082a2fd8d85b15..369aeabb94fe29 100644
  			if (likely(nf_ct_key_equal(h, tuple, zone, net)))
  				goto found;
 
-@@ -1387,6 +1393,9 @@ static unsigned int early_drop_list(struct net *net,
+@@ -1370,6 +1376,9 @@ static unsigned int early_drop_list(struct net *net,
  		if (!refcount_inc_not_zero(&tmp->ct_general.use))
  			continue;
 
@@ -128,7 +128,7 @@ index 082a2fd8d85b15..369aeabb94fe29 100644
  		/* kill only if still in same netns -- might have moved due to
  		 * SLAB_TYPESAFE_BY_RCU rules.
  		 *
-@@ -1536,6 +1545,9 @@ static void gc_worker(struct work_struct *work)
+@@ -1523,6 +1532,9 @@ static void gc_worker(struct work_struct *work)
  			if (!refcount_inc_not_zero(&tmp->ct_general.use))
  				continue;
 
@@ -138,7 +138,7 @@ index 082a2fd8d85b15..369aeabb94fe29 100644
  			if (gc_worker_skip_ct(tmp)) {
  				nf_ct_put(tmp);
  				continue;
-@@ -1751,6 +1751,16 @@ init_conntrack(struct net *net, struct n
+@@ -1747,6 +1759,16 @@ init_conntrack(struct net *net, struct n
  	if (!exp)
  		__nf_ct_try_assign_helper(ct, tmpl, GFP_ATOMIC);
 
@@ -159,8 +159,8 @@ diff --git a/net/netfilter/nf_conntrack_netlink.c b/net/netfilter/nf_conntrack_n
 index 722af5e309ba28..f5905b5201a798 100644
 --- a/net/netfilter/nf_conntrack_netlink.c
 +++ b/net/netfilter/nf_conntrack_netlink.c
-@@ -1203,6 +1203,7 @@ ctnetlink_dump_table(struct sk_buff *skb, struct netlink_callback *cb)
- 					   hnnode) {
+@@ -1211,6 +1211,7 @@ ctnetlink_dump_table(struct sk_buff *skb, struct netlink_callback *cb)
+ 				continue;
  			ct = nf_ct_tuplehash_to_ctrack(h);
  			if (nf_ct_is_expired(ct)) {
 +				/* need to defer nf_ct_kill() until lock is released */
@@ -171,7 +171,7 @@ diff --git a/net/netfilter/nf_conntrack_standalone.c b/net/netfilter/nf_conntrac
 index 6ad7bbc90d38fc..05895878610c06 100644
 --- a/net/netfilter/nf_conntrack_standalone.c
 +++ b/net/netfilter/nf_conntrack_standalone.c
-@@ -306,6 +306,9 @@ static int ct_seq_show(struct seq_file *s, void *v)
+@@ -307,6 +307,9 @@ static int ct_seq_show(struct seq_file *s, void *v)
  	if (unlikely(!refcount_inc_not_zero(&ct->ct_general.use)))
  		return 0;
 

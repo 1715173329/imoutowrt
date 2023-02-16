@@ -214,7 +214,7 @@
  {
 --- a/drivers/net/bonding/bond_main.c
 +++ b/drivers/net/bonding/bond_main.c
-@@ -1157,6 +1157,23 @@ void bond_change_active_slave(struct bon
+@@ -1156,6 +1156,23 @@ void bond_change_active_slave(struct bon
  			if (BOND_MODE(bond) == BOND_MODE_8023AD)
  				bond_3ad_handle_link_change(new_active, BOND_LINK_UP);
 
@@ -238,7 +238,7 @@
  			if (bond_is_lb(bond))
  				bond_alb_handle_link_change(bond, new_active, BOND_LINK_UP);
  		} else {
-@@ -1755,7 +1770,8 @@ int bond_enslave(struct net_device *bond
+@@ -1754,7 +1771,8 @@ int bond_enslave(struct net_device *bond
  	const struct net_device_ops *slave_ops = slave_dev->netdev_ops;
  	struct slave *new_slave = NULL, *prev_slave;
  	struct sockaddr_storage ss;
@@ -248,7 +248,7 @@
  	int res = 0, i;
 
  	if (slave_dev->flags & IFF_MASTER &&
-@@ -2198,6 +2214,15 @@ int bond_enslave(struct net_device *bond
+@@ -2197,6 +2215,15 @@ int bond_enslave(struct net_device *bond
  		   bond_is_active_slave(new_slave) ? "an active" : "a backup",
  		   new_slave->link != BOND_LINK_DOWN ? "an up" : "a down");
 
@@ -264,7 +264,7 @@
  	/* enslave is successful */
  	bond_queue_slave_event(new_slave);
  	return 0;
-@@ -2265,6 +2288,15 @@ err_undo_flags:
+@@ -2264,6 +2291,15 @@ err_undo_flags:
  		}
  	}
 
@@ -280,7 +280,7 @@
  	return res;
  }
 
-@@ -2287,7 +2317,8 @@ static int __bond_release_one(struct net
+@@ -2286,7 +2322,8 @@ static int __bond_release_one(struct net
  	struct slave *slave, *oldcurrent;
  	struct sockaddr_storage ss;
  	int old_flags = bond_dev->flags;
@@ -290,7 +290,7 @@
 
  	/* slave is not a slave or master is not master of this slave */
  	if (!(slave_dev->flags & IFF_SLAVE) ||
-@@ -2308,6 +2339,15 @@ static int __bond_release_one(struct net
+@@ -2307,6 +2344,15 @@ static int __bond_release_one(struct net
 
  	bond_set_slave_inactive_flags(slave, BOND_SLAVE_NOTIFY_NOW);
 
@@ -306,7 +306,7 @@
  	bond_sysfs_slave_del(slave);
 
  	/* recompute stats just before removing the slave */
-@@ -2626,6 +2664,8 @@ static void bond_miimon_commit(struct bo
+@@ -2625,6 +2671,8 @@ static void bond_miimon_commit(struct bo
  {
  	struct list_head *iter;
  	struct slave *slave, *primary;
@@ -315,7 +315,7 @@
 
  	bond_for_each_slave(bond, slave, iter) {
  		switch (slave->link_new_state) {
-@@ -2663,6 +2703,12 @@ static void bond_miimon_commit(struct bo
+@@ -2662,6 +2710,12 @@ static void bond_miimon_commit(struct bo
  				bond_set_active_slave(slave);
  			}
 
@@ -328,7 +328,7 @@
  			slave_info(bond->dev, slave->dev, "link status definitely up, %u Mbps %s duplex\n",
  				   slave->speed == SPEED_UNKNOWN ? 0 : slave->speed,
  				   slave->duplex ? "full" : "half");
-@@ -2709,6 +2753,16 @@ do_failover:
+@@ -2708,6 +2762,16 @@ do_failover:
  		unblock_netpoll_tx();
  	}
 

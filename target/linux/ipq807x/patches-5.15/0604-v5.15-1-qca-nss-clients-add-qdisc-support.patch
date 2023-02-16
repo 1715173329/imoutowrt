@@ -1,11 +1,14 @@
 --- a/include/linux/timer.h
 +++ b/include/linux/timer.h
-@@ -17,6 +17,7 @@ struct timer_list {
+@@ -17,10 +17,7 @@ struct timer_list {
  	unsigned long		expires;
  	void			(*function)(struct timer_list *);
  	u32			flags;
-+	unsigned long		cust_data;
-
+-
+-#ifdef CONFIG_SHORTCUT_FE
+ 	unsigned long		cust_data;
+-#endif
+ 
  #ifdef CONFIG_LOCKDEP
  	struct lockdep_map	lockdep_map;
 --- a/drivers/net/ifb.c
@@ -52,7 +55,7 @@
  	dev->needs_free_netdev = true;
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4749,6 +4749,15 @@ void dev_uc_flush(struct net_device *dev
+@@ -4753,6 +4753,15 @@ void dev_uc_flush(struct net_device *dev
  void dev_uc_init(struct net_device *dev);
 
  /**
@@ -68,7 +71,7 @@
   *  __dev_uc_sync - Synchonize device's unicast list
   *  @dev:  device to sync
   *  @sync: function to call if address should be added
-@@ -5298,6 +5307,11 @@ static inline bool netif_is_failover_sla
+@@ -5302,6 +5311,11 @@ static inline bool netif_is_failover_sla
  	return dev->priv_flags & IFF_FAILOVER_SLAVE;
  }
 
@@ -341,7 +344,7 @@
 
  struct Qdisc *qdisc_lookup_rcu(struct net_device *dev, u32 handle)
  {
-@@ -2304,4 +2304,26 @@ static int __init pktsched_init(void)
+@@ -2310,4 +2311,26 @@ static int __init pktsched_init(void)
  	return 0;
  }
 
@@ -438,9 +441,9 @@
  /* Reset all TX qdiscs greater than index of a device.  */
  static inline void qdisc_reset_all_tx_gt(struct net_device *dev, unsigned int i)
  {
-@@ -1336,4 +1371,9 @@ void mini_qdisc_pair_block_init(struct m
-
- int sch_frag_xmit_hook(struct sk_buff *skb, int (*xmit)(struct sk_buff *skb));
+@@ -1342,4 +1377,9 @@ void mini_qdisc_pair_block_init(struct m
+ 		msleep(1);
+ }
 
 +/* QCA NSS Qdisc Support - Start */
 +void qdisc_destroy(struct Qdisc *qdisc);
