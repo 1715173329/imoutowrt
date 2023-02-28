@@ -5,10 +5,13 @@
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
-PKG_VERSION:=2023.04-rc3
 PKG_RELEASE:=1
 
-PKG_HASH:=a890dab9bf7dce71e836778de80254bb217e641a2aa8fc7817102a9c2dde2d94
+PKG_SOURCE_PROTO:=git
+PKG_SOURCE_URL:=https://source.denx.de/u-boot/custodians/u-boot-rockchip.git
+PKG_SOURCE_DATE:=2023-02-28
+PKG_SOURCE_VERSION:=886483fdf6b46eac9d094b4aaccbec97fd118c42
+PKG_MIRROR_HASH:=d9cb59e953c87a51ea10faac0fe445f1d0e63b06a22f5ac63ae83c67a754172e
 
 PKG_MAINTAINER:=Tobias Maedel <openwrt@tbspace.de>
 
