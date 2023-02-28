@@ -1,0 +1,54 @@
+From f773664e8cdbd1615d834df77f2b5dcd425fd38f Mon Sep 17 00:00:00 2001
+From: hmz007 <hmz007@gmail.com>
+Date: Fri, 22 Jul 2022 11:32:56 +0800
+Subject: [PATCH] board: rockchip: Add FriendlyElec rk3588 board
+
+Signed-off-by: hmz007 <hmz007@gmail.com>
+Change-Id: I71bd1f639e0dfa53976c568b99088e08d104c9d3
+---
+ arch/arm/dts/rk3588-nanopi6.dts       |  18 ++
+ arch/arm/mach-rockchip/rk3588/Kconfig |   8 +
+ board/rockchip/nanopi6/Kconfig        |  15 ++
+ board/rockchip/nanopi6/MAINTAINERS    |   6 +
+ board/rockchip/nanopi6/Makefile       |   8 +
+ board/rockchip/nanopi6/board.c        | 172 ++++++++++++++++++++
+ board/rockchip/nanopi6/hwrev.c        | 110 +++++++++++++
+ board/rockchip/nanopi6/hwrev.h        |  28 ++++
+ configs/nanopi6_defconfig             | 226 ++++++++++++++++++++++++++
+ include/configs/nanopi6.h             |  71 ++++++++
+ 10 files changed, 662 insertions(+)
+ create mode 100644 arch/arm/dts/rk3588-nanopi6.dts
+ create mode 100644 board/rockchip/nanopi6/Kconfig
+ create mode 100644 board/rockchip/nanopi6/MAINTAINERS
+ create mode 100644 board/rockchip/nanopi6/Makefile
+ create mode 100644 board/rockchip/nanopi6/board.c
+ create mode 100644 board/rockchip/nanopi6/hwrev.c
+ create mode 100644 board/rockchip/nanopi6/hwrev.h
+ create mode 100644 configs/nanopi6_defconfig
+ create mode 100644 include/configs/nanopi6.h
+
+diff --git a/arch/arm/mach-rockchip/rk3588/Kconfig b/arch/arm/mach-rockchip/rk3588/Kconfig
+index dc97fd9ab3..4b564b4d02 100644
+--- a/arch/arm/mach-rockchip/rk3588/Kconfig
++++ b/arch/arm/mach-rockchip/rk3588/Kconfig
+@@ -6,6 +6,13 @@ config TARGET_EVB_RK3588
+ 	help
+ 	  RK3588 EVB is a evaluation board for Rockchp RK3588.
+ 
++config TARGET_NANOPI6
++	bool "FriendlyElec NanoPi 6 Series"
++	select BOARD_LATE_INIT
++	select VENDOR_FRIENDLYELEC
++	help
++	  Support for FriendlyElec boards based on RK3588.
++
+ config SYS_SOC
+ 	default "rockchip"
+ 
+@@ -13,5 +20,6 @@ config SYS_MALLOC_F_LEN
+ 	default 0x400
+ 
+ source board/rockchip/evb_rk3588/Kconfig
++source board/rockchip/nanopi6/Kconfig
+ 
+ endif

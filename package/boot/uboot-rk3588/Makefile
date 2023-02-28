@@ -18,6 +18,7 @@ PKG_MIRROR_HASH:=4ce948013f113c571297ec2ffb2a15451f5f2c7ef032084e9d659090fda4071
 
 include $(INCLUDE_DIR)/u-boot.mk
 include $(INCLUDE_DIR)/package.mk
+include ../arm-trusted-firmware-rockchip/atf-version.mk
 
 define U-Boot/Default
   BUILD_TARGET:=rockchip
@@ -30,14 +31,26 @@ define U-Boot/rock-5b-rk3588
   NAME:=Radxa ROCK 5B
   BUILD_DEVICES:= \
     radxa_rock-5b
-  DEPENDS:=+PACKAGE_u-boot-rock-5b-rk3588:arm-trusted-firmware-rk3588
+  DEPENDS:=+PACKAGE_u-boot-rock-5b-rk3588:trusted-firmware-a-rk3588
   PKG_BUILD_DEPENDS:=arm-trusted-firmware-rockchip
-  ATF:=rk3588_bl31_v1.27.elf
-  DDR:=rk3588_ddr_lp4_2112MHz_lp5_2736MHz_v1.08.bin
+  ATF:=$(RK3588_ATF)
+  DDR:=$(RK3588_DDR)
+endef
+
+define U-Boot/nanopi6
+  BUILD_SUBTARGET:=armv8
+  NAME:=nanopi6
+  BUILD_DEVICES:= \
+    friendlyarm_nanopi-r6s
+  DEPENDS:=+PACKAGE_u-boot-nanopi6:trusted-firmware-a-rk3588
+  PKG_BUILD_DEPENDS:=arm-trusted-firmware-rockchip
+  ATF:=$(RK3588_ATF)
+  DDR:=$(RK3588_DDR)
 endef
 
 UBOOT_TARGETS := \
-  rock-5b-rk3588
+  rock-5b-rk3588 \
+  nanopi6
 
 UBOOT_CONFIGURE_VARS += USE_PRIVATE_LIBGCC=yes
 

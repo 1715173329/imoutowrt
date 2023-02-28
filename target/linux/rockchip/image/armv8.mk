@@ -66,7 +66,8 @@ define Device/friendlyarm_nanopi-r6s
   DEVICE_VENDOR := FriendlyARM
   DEVICE_MODEL := NanoPi R6S
   SOC := rk3588s
-  UBOOT_DEVICE_NAME := nanopi-r6s-rk3588s
+  # UBOOT_DEVICE_NAME := nanopi-r6s-rk3588s
+  UBOOT_DEVICE_NAME := nanopi6
   IMAGE/sysupgrade.img.gz := boot-common | boot-script | pine64-img | gzip | append-metadata
   DEVICE_PACKAGES := kmod-r8125
 endef

@@ -166,8 +166,8 @@ UBOOT_TARGETS := \
   fastrhino-r66s-rk3568 \
   fastrhino-r68s-rk3568 \
   nanopi-r5c-rk3568 \
-  nanopi-r5s-rk3568 \
-  nanopi-r6s-rk3588s
+  nanopi-r5s-rk3568
+  # nanopi-r6s-rk3588s
 
 UBOOT_CONFIGURE_VARS += USE_PRIVATE_LIBGCC=yes
 

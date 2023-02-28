@@ -1,0 +1,6 @@
+NanoPi 6 Series
+M:      <support@friendlyarm.com>
+S:      Maintained
+F:      board/rockchip/nanopi6/
+F:      include/configs/nanopi6.h
+F:      configs/nanopi6_defconfig

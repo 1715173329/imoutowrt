@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * (C) Copyright 2022 FriendlyElec Computer Tech. Co., Ltd.
+ * (http://www.friendlyelec.com)
+ *
+ * Copyright (c) 2021 Rockchip Electronics Co., Ltd
+ */
+
+/dts-v1/;
+#include "rk3588.dtsi"
+#include "rk3588-u-boot.dtsi"
+#include <dt-bindings/input/input.h>
+
+/ {
+    model = "FriendlyElec boards based on Rockchip RK3588";
+    compatible = "friendlyelec,nanopi6",
+             "rockchip,rk3588";
+};
