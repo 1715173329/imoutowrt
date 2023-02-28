@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Copyright (c) 2023 Tianling Shen <cnsztl@immortalwrt.org>
+ */
+
+#include "rk3588-u-boot.dtsi"
+
+/ {
+	aliases {
+		mmc0 = &sdmmc;
+	};
+
+	chosen {
+		stdout-path = &uart2;
+		u-boot,spl-boot-order = &sdmmc, &sdhci;
+	};
+};
+
+&sdmmc {
+	bus-width = <4>;
+	bootph-all;
+	u-boot,spl-fifo-mode;
+	status = "okay";
+};
