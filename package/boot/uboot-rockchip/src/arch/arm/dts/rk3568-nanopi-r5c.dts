@@ -13,6 +13,11 @@
 	model = "FriendlyElec NanoPi R5C";
 	compatible = "friendlyarm,nanopi-r5c", "rockchip,rk3568";
 
+	aliases {
+		ethernet0 = &rtl8125_1;
+		ethernet1 = &rtl8125_2;
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 		pinctrl-names = "default";
@@ -58,6 +63,46 @@
 	pinctrl-0 = <&pcie20_reset_pin>;
 	reset-gpios = <&gpio3 RK_PC1 GPIO_ACTIVE_HIGH>;
 	status = "okay";
+};
+
+&pcie3x1 {
+	num-lanes = <1>;
+	reset-gpios = <&gpio0 RK_PA0 GPIO_ACTIVE_HIGH>;
+	vpcie3v3-supply = <&vcc3v3_pcie>;
+	status = "okay";
+
+	pcie@10 {
+		reg = <0x00100000 0 0 0 0>;
+		#address-cells = <3>;
+		#size-cells = <2>;
+
+		rtl8125_1: pcie-eth@10,0 {
+			compatible = "pci10ec,8125";
+			reg = <0x000000 0 0 0 0>;
+
+			realtek,led-data = <0x78>;
+		};
+	};
+};
+
+&pcie3x2 {
+	num-lanes = <1>;
+	reset-gpios = <&gpio0 RK_PB6 GPIO_ACTIVE_HIGH>;
+	vpcie3v3-supply = <&vcc3v3_pcie>;
+	status = "okay";
+
+	pcie@20 {
+		reg = <0x00200000 0 0 0 0>;
+		#address-cells = <3>;
+		#size-cells = <2>;
+
+		rtl8125_2: pcie-eth@20,0 {
+			compatible = "pci10ec,8125";
+			reg = <0x000000 0 0 0 0>;
+
+			realtek,led-data = <0x78>;
+		};
+	};
 };
 
 &pinctrl {

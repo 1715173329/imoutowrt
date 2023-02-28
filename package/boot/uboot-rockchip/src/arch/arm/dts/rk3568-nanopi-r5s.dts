@@ -16,6 +16,7 @@
 	aliases {
 		ethernet0 = &gmac0;
 		ethernet1 = &rtl8125_1;
+		ethernet2 = &rtl8125_2;
 	};
 
 	fan: pwm-fan {
@@ -127,6 +128,35 @@
 			realtek,led-data = <0x78>;
 		};
 	};
+};
+
+&pcie3x1 {
+	num-lanes = <1>;
+	reset-gpios = <&gpio0 RK_PA0 GPIO_ACTIVE_HIGH>;
+	vpcie3v3-supply = <&vcc3v3_pcie>;
+	status = "okay";
+
+	pcie@10 {
+		reg = <0x00100000 0 0 0 0>;
+		#address-cells = <3>;
+		#size-cells = <2>;
+
+		rtl8125_2: pcie-eth@10,0 {
+			compatible = "pci10ec,8125";
+			reg = <0x000000 0 0 0 0>;
+
+			realtek,led-data = <0x78>;
+		};
+	};
+};
+
+&pcie3x2 {
+	num-lanes = <1>;
+	num-ib-windows = <8>;
+	num-ob-windows = <8>;
+	reset-gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;
+	vpcie3v3-supply = <&vcc3v3_pcie>;
+	status = "okay";
 };
 
 &pinctrl {
