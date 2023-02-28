@@ -1,6 +1,6 @@
-From eb6c3df5af3fd7d07415a9430138e5f5139b7c31 Mon Sep 17 00:00:00 2001
+From 9414645a2fa56d1e44a914e0353d07f4f2aa93ef Mon Sep 17 00:00:00 2001
 From: Jonas Karlman <jonas@kwiboo.se>
-Date: Mon, 16 Jan 2023 16:15:05 +0000
+Date: Tue, 7 Feb 2023 17:27:10 +0000
 Subject: [PATCH] rockchip: sdram: add basic support for sdram reg info version
  3
 
@@ -18,6 +18,7 @@ Details on the new format was deciphered from vendor u-boot commit [1].
 [1] https://github.com/rockchip-linux/u-boot/commit/c69667e0e2bf4290ab1f408fcde58b8806ac266b
 
 Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
 ---
  arch/arm/include/asm/arch-rockchip/sdram.h | 28 +++++++++++++++-------
  arch/arm/mach-rockchip/sdram.c             |  9 +++++--

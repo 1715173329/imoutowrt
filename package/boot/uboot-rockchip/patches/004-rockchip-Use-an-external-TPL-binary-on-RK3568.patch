@@ -1,0 +1,112 @@
+From 4b5370fa4c012e01fff07e3fc0b1b6e8ba1577c2 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 19 Feb 2023 15:06:34 +0000
+Subject: [PATCH] rockchip: Use an external TPL binary on RK3568
+
+Rockchip SoCs typically use U-Boot TPL to initialize DRAM, then jumps
+back to BootRom to load next stage, U-Boot SPL, into DRAM. BootRom then
+jumps to U-Boot SPL to continue the normal boot flow.
+
+However, there is no support to initialize DRAM on RK35xx SoCs using
+U-Boot TPL and instead an external TPL binary must be used to generate a
+bootable u-boot-rockchip.bin image.
+
+Add CONFIG_ROCKCHIP_EXTERNAL_TPL to indicate that an external TPL should
+be used. Build U-Boot with ROCKCHIP_TPL=/path/to/ddr.bin to generate a
+bootable u-boot-rockchip.bin image for RK3568.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
+Tested-by: Eugen Hristev <eugen.hristev@collabora.com>
+---
+ Makefile                          |  1 +
+ arch/arm/dts/rockchip-u-boot.dtsi | 10 ++++++++--
+ arch/arm/mach-rockchip/Kconfig    |  8 ++++++++
+ doc/board/rockchip/rockchip.rst   | 11 +++++++++++
+ 4 files changed, 28 insertions(+), 2 deletions(-)
+
+--- a/Makefile
++++ b/Makefile
+@@ -1336,6 +1336,7 @@ cmd_binman = $(srctree)/tools/binman/bin
+ 		-a opensbi-path=${OPENSBI} \
+ 		-a default-dt=$(default_dt) \
+ 		-a scp-path=$(SCP) \
++		-a rockchip-tpl-path=$(ROCKCHIP_TPL) \
+ 		-a spl-bss-pad=$(if $(CONFIG_SPL_SEPARATE_BSS),,1) \
+ 		-a tpl-bss-pad=$(if $(CONFIG_TPL_SEPARATE_BSS),,1) \
+ 		-a spl-dtb=$(CONFIG_SPL_OF_REAL) \
+--- a/arch/arm/dts/rockchip-u-boot.dtsi
++++ b/arch/arm/dts/rockchip-u-boot.dtsi
+@@ -20,9 +20,12 @@
+ 		mkimage {
+ 			filename = "idbloader.img";
+ 			args = "-n", CONFIG_SYS_SOC, "-T", "rksd";
+-#ifdef CONFIG_TPL
+ 			multiple-data-files;
+ 
++#ifdef CONFIG_ROCKCHIP_EXTERNAL_TPL
++			rockchip-tpl {
++			};
++#elif defined(CONFIG_TPL)
+ 			u-boot-tpl {
+ 			};
+ #endif
+@@ -134,9 +137,12 @@
+ 		mkimage {
+ 			filename = "idbloader-spi.img";
+ 			args = "-n", CONFIG_SYS_SOC, "-T", "rkspi";
+-#ifdef CONFIG_TPL
+ 			multiple-data-files;
+ 
++#ifdef CONFIG_ROCKCHIP_EXTERNAL_TPL
++			rockchip-tpl {
++			};
++#elif defined(CONFIG_TPL)
+ 			u-boot-tpl {
+ 			};
+ #endif
+--- a/arch/arm/mach-rockchip/Kconfig
++++ b/arch/arm/mach-rockchip/Kconfig
+@@ -401,6 +401,14 @@ config TPL_ROCKCHIP_COMMON_BOARD
+ 	  common board is a basic TPL board init which can be shared for most
+ 	  of SoCs to avoid copy-paste for different SoCs.
+ 
++config ROCKCHIP_EXTERNAL_TPL
++	bool "Use external TPL binary"
++	default y if ROCKCHIP_RK3568
++	help
++	  Some Rockchip SoCs require an external TPL to initialize DRAM.
++	  Enable this option and build with ROCKCHIP_TPL=/path/to/ddr.bin to
++	  include the external TPL in the image built by binman.
++
+ config ROCKCHIP_BOOT_MODE_REG
+ 	hex "Rockchip boot mode flag register address"
+ 	help
+--- a/doc/board/rockchip/rockchip.rst
++++ b/doc/board/rockchip/rockchip.rst
+@@ -86,6 +86,8 @@ List of mainline supported Rockchip boar
+      - Radxa ROCK Pi 4 (rock-pi-4-rk3399)
+      - Rockchip Evb-RK3399 (evb_rk3399)
+      - Theobroma Systems RK3399-Q7 SoM - Puma (puma_rk3399)
++* rk3568
++     - Rockchip Evb-RK3568 (evb-rk3568)
+ * rv1108
+      - Rockchip Evb-rv1108 (evb-rv1108)
+      - Elgin-R1 (elgin-rv1108)
+@@ -167,6 +169,15 @@ To build rk3399 boards:
+         make evb-rk3399_defconfig
+         make CROSS_COMPILE=aarch64-linux-gnu-
+ 
++To build rk3568 boards:
++
++.. code-block:: bash
++
++        export BL31=../rkbin/bin/rk35/rk3568_bl31_v1.34.elf
++        export ROCKCHIP_TPL=../rkbin/bin/rk35/rk3568_ddr_1560MHz_v1.13.bin
++        make evb-rk3568_defconfig
++        make CROSS_COMPILE=aarch64-linux-gnu-
++
+ Flashing
+ --------
+ 

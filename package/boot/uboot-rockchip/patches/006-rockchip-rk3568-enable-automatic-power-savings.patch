@@ -1,27 +1,26 @@
-From: Peter Geis <pgwipeout@gmail.com>
-To: Simon Glass <sjg@chromium.org>,
-	Philipp Tomsich <philipp.tomsich@vrull.eu>,
-	Kever Yang <kever.yang@rock-chips.com>
-Cc: Peter Geis <pgwipeout@gmail.com>, u-boot@lists.denx.de
-Subject: [PATCH v1 08/11] rockchip: rk3568: enable automatic clock gating
-Date: Mon, 21 Feb 2022 20:31:27 -0500	[thread overview]
-Message-ID: <20220222013131.3114990-9-pgwipeout@gmail.com> (raw)
-In-Reply-To: <20220222013131.3114990-1-pgwipeout@gmail.com>
+From 4ec1cc81937a03514ea12e90fb14e9856bd70898 Mon Sep 17 00:00:00 2001
+From: Chris Morgan <macromorgan@hotmail.com>
+Date: Mon, 13 Feb 2023 16:27:39 -0600
+Subject: [PATCH] rockchip: rk3568: enable automatic power savings
 
-Enable automatic clock gating on rk3568, which solves a 7c temperature
-difference on SoQuartz compared to downstream.
+It enables automatic clock gating on idle, disables the eDP phy by
+default, and sets the core pvtpll ring length. It is reported this
+lowers the temperature on at least one SoC by 7C.
 
 Signed-off-by: Peter Geis <pgwipeout@gmail.com>
+Signed-off-by: Chris Morgan <macromorgan@hotmail.com>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
 ---
- arch/arm/mach-rockchip/rk3568/rk3568.c | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+ arch/arm/mach-rockchip/rk3568/rk3568.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
 --- a/arch/arm/mach-rockchip/rk3568/rk3568.c
 +++ b/arch/arm/mach-rockchip/rk3568/rk3568.c
-@@ -25,6 +25,15 @@
+@@ -24,6 +24,16 @@
+ #define SGRF_SOC_CON4			0x10
  #define EMMC_HPROT_SECURE_CTRL		0x03
  #define SDMMC0_HPROT_SECURE_CTRL	0x01
- 
++
 +#define PMU_BASE_ADDR		0xfdd90000
 +#define PMU_NOC_AUTO_CON0	(0x70)
 +#define PMU_NOC_AUTO_CON1	(0x74)
@@ -34,7 +33,7 @@ Signed-off-by: Peter Geis <pgwipeout@gmail.com>
  /* PMU_GRF_GPIO0D_IOMUX_L */
  enum {
  	GPIO0D1_SHIFT		= 4,
-@@ -99,6 +108,20 @@ void board_debug_uart_init(void)
+@@ -98,6 +108,20 @@ void board_debug_uart_init(void)
  int arch_cpu_init(void)
  {
  #ifdef CONFIG_SPL_BUILD

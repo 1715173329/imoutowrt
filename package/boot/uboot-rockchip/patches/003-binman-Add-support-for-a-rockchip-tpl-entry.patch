@@ -1,0 +1,131 @@
+From 830078992881aa4e1b47fef25a58918e9e10cf7f Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Sun, 19 Feb 2023 15:06:34 +0000
+Subject: [PATCH] binman: Add support for a rockchip-tpl entry
+
+The rockchip-tpl entry can be used when an external TPL binary should be
+used instead of the normal U-Boot TPL.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+Reviewed-by: Kever Yang <kever.yang@rock-chips.com>
+Tested-by: Eugen Hristev <eugen.hristev@collabora.com>
+---
+ tools/binman/entries.rst               | 14 ++++++++++++++
+ tools/binman/etype/rockchip_tpl.py     | 20 ++++++++++++++++++++
+ tools/binman/ftest.py                  |  7 +++++++
+ tools/binman/missing-blob-help         |  5 +++++
+ tools/binman/test/277_rockchip_tpl.dts | 16 ++++++++++++++++
+ 5 files changed, 62 insertions(+)
+ create mode 100644 tools/binman/etype/rockchip_tpl.py
+ create mode 100644 tools/binman/test/277_rockchip_tpl.dts
+
+--- a/tools/binman/entries.rst
++++ b/tools/binman/entries.rst
+@@ -1386,6 +1386,20 @@ For example, this creates an image with
+ 
+ 
+ 
++.. _etype_rockchip_tpl:
++
++Entry: rockchip-tpl: Rockchip TPL binary
++----------------------------------------
++
++Properties / Entry arguments:
++    - rockchip-tpl-path: Filename of file to read into the entry,
++                         typically <soc>_ddr_<version>.bin
++
++This entry holds an external TPL binary used by some Rockchip SoCs
++instead of normal U-Boot TPL, typically to initialize DRAM.
++
++
++
+ .. _etype_scp:
+ 
+ Entry: scp: System Control Processor (SCP) firmware blob
+--- /dev/null
++++ b/tools/binman/etype/rockchip_tpl.py
+@@ -0,0 +1,20 @@
++# SPDX-License-Identifier: GPL-2.0+
++#
++# Entry-type module for Rockchip TPL binary
++#
++
++from binman.etype.blob_named_by_arg import Entry_blob_named_by_arg
++
++class Entry_rockchip_tpl(Entry_blob_named_by_arg):
++    """Rockchip TPL binary
++
++    Properties / Entry arguments:
++        - rockchip-tpl-path: Filename of file to read into the entry,
++                             typically <soc>_ddr_<version>.bin
++
++    This entry holds an external TPL binary used by some Rockchip SoCs
++    instead of normal U-Boot TPL, typically to initialize DRAM.
++    """
++    def __init__(self, section, etype, node):
++        super().__init__(section, etype, node, 'rockchip-tpl')
++        self.external = True
+--- a/tools/binman/ftest.py
++++ b/tools/binman/ftest.py
+@@ -90,6 +90,7 @@ TEE_OS_DATA           = b'this is some t
+ ATF_BL2U_DATA         = b'bl2u'
+ OPENSBI_DATA          = b'opensbi'
+ SCP_DATA              = b'scp'
++ROCKCHIP_TPL_DATA     = b'rockchip-tpl'
+ TEST_FDT1_DATA        = b'fdt1'
+ TEST_FDT2_DATA        = b'test-fdt2'
+ ENV_DATA              = b'var1=1\nvar2="2"'
+@@ -205,6 +206,7 @@ class TestFunctional(unittest.TestCase):
+         TestFunctional._MakeInputFile('bl2u.bin', ATF_BL2U_DATA)
+         TestFunctional._MakeInputFile('fw_dynamic.bin', OPENSBI_DATA)
+         TestFunctional._MakeInputFile('scp.bin', SCP_DATA)
++        TestFunctional._MakeInputFile('rockchip-tpl.bin', ROCKCHIP_TPL_DATA)
+ 
+         # Add a few .dtb files for testing
+         TestFunctional._MakeInputFile('%s/test-fdt1.dtb' % TEST_FDT_SUBDIR,
+@@ -6386,6 +6388,11 @@ fdt         fdtmap                Extrac
+         self.assertEqual(['u-boot', 'atf-2'],
+                          fdt_util.GetStringList(node, 'loadables'))
+ 
++    def testPackRockchipTpl(self):
++        """Test that an image with a Rockchip TPL binary can be created"""
++        data = self._DoReadFile('277_rockchip_tpl.dts')
++        self.assertEqual(ROCKCHIP_TPL_DATA, data[:len(ROCKCHIP_TPL_DATA)])
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+--- a/tools/binman/missing-blob-help
++++ b/tools/binman/missing-blob-help
+@@ -34,6 +34,11 @@ If CONFIG_WDT_K3_RTI_LOAD_FW is enabled,
+ the R5F core(s) to trigger the system reset. One possible source is
+ https://github.com/siemens/k3-rti-wdt.
+ 
++rockchip-tpl:
++An external TPL is required to initialize DRAM. Get the external TPL
++binary and build with ROCKCHIP_TPL=/path/to/ddr.bin. One possible source
++for the external TPL binary is https://github.com/rockchip-linux/rkbin.
++
+ tee-os:
+ See the documentation for your board. You may need to build Open Portable
+ Trusted Execution Environment (OP-TEE) with TEE=/path/to/tee.bin
+--- /dev/null
++++ b/tools/binman/test/277_rockchip_tpl.dts
+@@ -0,0 +1,16 @@
++// SPDX-License-Identifier: GPL-2.0+
++
++/dts-v1/;
++
++/ {
++	#address-cells = <1>;
++	#size-cells = <1>;
++
++	binman {
++		size = <16>;
++
++		rockchip-tpl {
++			filename = "rockchip-tpl.bin";
++		};
++	};
++};
