@@ -81,7 +81,7 @@ Signed-off-by: Peter Geis <pgwipeout@gmail.com>
  	GPIO_PULL_NORMAL = 0,
 --- a/drivers/gpio/Kconfig
 +++ b/drivers/gpio/Kconfig
-@@ -340,6 +340,19 @@ config ROCKCHIP_GPIO
+@@ -344,6 +344,19 @@ config ROCKCHIP_GPIO
  	  The GPIOs for a device are defined in the device tree with one node
  	  for each bank.
  
@@ -187,17 +187,15 @@ Signed-off-by: Peter Geis <pgwipeout@gmail.com>
  
  	return 0;
  }
-@@ -86,8 +111,8 @@ static int rockchip_gpio_get_function(st
+@@ -86,7 +111,7 @@ static int rockchip_gpio_get_function(st
  	ret = pinctrl_get_gpio_mux(priv->pinctrl, priv->bank, offset);
  	if (ret)
  		return ret;
 -	is_output = readl(&regs->swport_ddr) & OFFSET_TO_BIT(offset);
--
 +	is_output = READ_REG(&regs->swport_ddr) & OFFSET_TO_BIT(offset);
-+	
+ 
  	return is_output ? GPIOF_OUTPUT : GPIOF_INPUT;
  #endif
- }
 @@ -142,19 +167,49 @@ static int rockchip_gpio_probe(struct ud
  {
  	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
@@ -257,15 +255,16 @@ Signed-off-by: Peter Geis <pgwipeout@gmail.com>
  }
 --- a/drivers/pinctrl/rockchip/Makefile
 +++ b/drivers/pinctrl/rockchip/Makefile
-@@ -14,4 +14,5 @@ obj-$(CONFIG_ROCKCHIP_RK3308) += pinctrl
+@@ -14,5 +14,6 @@ obj-$(CONFIG_ROCKCHIP_RK3308) += pinctrl
  obj-$(CONFIG_ROCKCHIP_RK3328) += pinctrl-rk3328.o
  obj-$(CONFIG_ROCKCHIP_RK3368) += pinctrl-rk3368.o
  obj-$(CONFIG_ROCKCHIP_RK3399) += pinctrl-rk3399.o
 +obj-$(CONFIG_ROCKCHIP_RK3568) += pinctrl-rk3568.o
  obj-$(CONFIG_ROCKCHIP_RV1108) += pinctrl-rv1108.o
+ obj-$(CONFIG_ROCKCHIP_RV1126) += pinctrl-rv1126.o
 --- /dev/null
 +++ b/drivers/pinctrl/rockchip/pinctrl-rk3568.c
-@@ -0,0 +1,360 @@
+@@ -0,0 +1,361 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * (C) Copyright 2020 Rockchip Electronics Co., Ltd
@@ -276,6 +275,7 @@ Signed-off-by: Peter Geis <pgwipeout@gmail.com>
 +#include <dm/pinctrl.h>
 +#include <regmap.h>
 +#include <syscon.h>
++#include <dt-bindings/pinctrl/rockchip.h>
 +
 +#include "pinctrl-rockchip.h"
 +
@@ -628,7 +628,7 @@ Signed-off-by: Peter Geis <pgwipeout@gmail.com>
 +};
 --- a/drivers/pinctrl/rockchip/pinctrl-rockchip-core.c
 +++ b/drivers/pinctrl/rockchip/pinctrl-rockchip-core.c
-@@ -400,7 +400,7 @@ static int rockchip_pinctrl_set_state(st
+@@ -433,7 +433,7 @@ static int rockchip_pinctrl_set_state(st
  	int prop_len, param;
  	const u32 *data;
  	ofnode node;
@@ -637,7 +637,7 @@ Signed-off-by: Peter Geis <pgwipeout@gmail.com>
  	const struct device_node *np;
  	struct property *pp;
  #else
-@@ -440,7 +440,7 @@ static int rockchip_pinctrl_set_state(st
+@@ -473,7 +473,7 @@ static int rockchip_pinctrl_set_state(st
  		node = ofnode_get_by_phandle(conf);
  		if (!ofnode_valid(node))
  			return -ENODEV;
@@ -646,7 +646,7 @@ Signed-off-by: Peter Geis <pgwipeout@gmail.com>
  		np = ofnode_to_np(node);
  		for (pp = np->properties; pp; pp = pp->next) {
  			prop_name = pp->name;
-@@ -515,13 +515,14 @@ static struct rockchip_pin_ctrl *rockchi
+@@ -548,13 +548,14 @@ static struct rockchip_pin_ctrl *rockchi
  
  			/* preset iomux offset value, set new start value */
  			if (iom->offset >= 0) {
@@ -664,92 +664,3 @@ Signed-off-by: Peter Geis <pgwipeout@gmail.com>
  			}
  
  			/* preset drv offset value, set new start value */
---- a/drivers/pinctrl/rockchip/pinctrl-rockchip.h
-+++ b/drivers/pinctrl/rockchip/pinctrl-rockchip.h
-@@ -6,9 +6,13 @@
- #ifndef __DRIVERS_PINCTRL_ROCKCHIP_H
- #define __DRIVERS_PINCTRL_ROCKCHIP_H
- 
-+#include <dt-bindings/pinctrl/rockchip.h>
- #include <linux/bitops.h>
- #include <linux/types.h>
- 
-+#define RK_GENMASK_VAL(h, l, v) \
-+	(GENMASK(((h) + 16), ((l) + 16)) | (((v) << (l)) & GENMASK((h), (l))))
-+
- /**
-  * Encode variants of iomux registers into a type variable
-  */
-@@ -18,6 +22,8 @@
- #define IOMUX_UNROUTED		BIT(3)
- #define IOMUX_WIDTH_3BIT	BIT(4)
- #define IOMUX_8WIDTH_2BIT	BIT(5)
-+#define IOMUX_WRITABLE_32BIT	BIT(6)
-+#define IOMUX_L_SOURCE_PMU	BIT(7)
- 
- /**
-  * Defined some common pins constants
-@@ -63,6 +69,21 @@ enum rockchip_pin_pull_type {
- };
- 
- /**
-+ * enum mux route register type, should be invalid/default/topgrf/pmugrf.
-+ * INVALID: means do not need to set mux route
-+ * DEFAULT: means same regmap as pin iomux
-+ * TOPGRF: means mux route setting in topgrf
-+ * PMUGRF: means mux route setting in pmugrf
-+ */
-+enum rockchip_pin_route_type {
-+	ROUTE_TYPE_DEFAULT = 0,
-+	ROUTE_TYPE_TOPGRF = 1,
-+	ROUTE_TYPE_PMUGRF = 2,
-+
-+	ROUTE_TYPE_INVALID = -1,
-+};
-+
-+/**
-  * @drv_type: drive strength variant using rockchip_perpin_drv_type
-  * @offset: if initialized to -1 it will be autocalculated, by specifying
-  *	    an initial offset value the relevant source offset can be reset
-@@ -220,6 +241,25 @@ struct rockchip_pin_bank {
- 		.pull_type[3] = pull3,					\
- 	}
- 
-+#define PIN_BANK_MUX_ROUTE_FLAGS(ID, PIN, FUNC, REG, VAL, FLAG)		\
-+	{								\
-+		.bank_num	= ID,					\
-+		.pin		= PIN,					\
-+		.func		= FUNC,					\
-+		.route_offset	= REG,					\
-+		.route_val	= VAL,					\
-+		.route_type	= FLAG,					\
-+	}
-+
-+#define MR_DEFAULT(ID, PIN, FUNC, REG, VAL)	\
-+	PIN_BANK_MUX_ROUTE_FLAGS(ID, PIN, FUNC, REG, VAL, ROUTE_TYPE_DEFAULT)
-+
-+#define MR_TOPGRF(ID, PIN, FUNC, REG, VAL)	\
-+	PIN_BANK_MUX_ROUTE_FLAGS(ID, PIN, FUNC, REG, VAL, ROUTE_TYPE_TOPGRF)
-+
-+#define MR_PMUGRF(ID, PIN, FUNC, REG, VAL)	\
-+	PIN_BANK_MUX_ROUTE_FLAGS(ID, PIN, FUNC, REG, VAL, ROUTE_TYPE_PMUGRF)
-+
- /**
-  * struct rockchip_mux_recalced_data: recalculate a pin iomux data.
-  * @num: bank number.
-@@ -241,6 +281,7 @@ struct rockchip_mux_recalced_data {
-  * @bank_num: bank number.
-  * @pin: index at register or used to calc index.
-  * @func: the min pin.
-+ * @route_type: the register type.
-  * @route_offset: the max pin.
-  * @route_val: the register offset.
-  */
-@@ -248,6 +289,7 @@ struct rockchip_mux_route_data {
- 	u8 bank_num;
- 	u8 pin;
- 	u8 func;
-+	enum rockchip_pin_route_type route_type : 8;
- 	u32 route_offset;
- 	u32 route_val;
- };
