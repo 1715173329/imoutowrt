@@ -1,0 +1,57 @@
+From c338ed260bfd87277c41aa0290f1f2aad8d629b1 Mon Sep 17 00:00:00 2001
+From: Jonas Karlman <jonas@kwiboo.se>
+Date: Mon, 27 Feb 2023 15:49:07 +0000
+Subject: [PATCH] net: phy: mdio: assert/deassert gpio reset pin when requested
+ to deassert
+
+Using reset-gpios property in a ethernet phy node does not work
+as expected on some phy.
+
+E.g. RTL8211F PHY datasheet contain:
+
+  For a complete PHY reset, this pin must be asserted low for at least
+  10ms. Wait for a further 30ms before accessing the PHY register.
+
+However, the Generic PHY driver does not handle PHY reset in this way.
+It will never assert the pin, only deassert the pin. The pin is only
+asserted if the probe fails.
+
+Both the mdio bus and stmicro driver will reset the phy using:
+- assert the pin
+- wait
+- deassert the pin
+- wait
+- probe
+
+Using reset-gpios the generic phy driver only:
+- deassert the pin
+- wait
+- probe
+
+So the phy never gets reset.
+
+Signed-off-by: Jonas Karlman <jonas@kwiboo.se>
+---
+ drivers/net/phy/mdio_device.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/phy/mdio_device.c
++++ b/drivers/net/phy/mdio_device.c
+@@ -122,8 +122,15 @@ void mdio_device_reset(struct mdio_devic
+ 	if (!mdiodev->reset_gpio && !mdiodev->reset_ctrl)
+ 		return;
+ 
+-	if (mdiodev->reset_gpio)
+-		gpiod_set_value_cansleep(mdiodev->reset_gpio, value);
++	if (mdiodev->reset_gpio && value)
++		return;
++
++	if (mdiodev->reset_gpio && !value) {
++		gpiod_set_value_cansleep(mdiodev->reset_gpio, 1);
++		if (mdiodev->reset_assert_delay)
++			fsleep(mdiodev->reset_assert_delay);
++		gpiod_set_value_cansleep(mdiodev->reset_gpio, 0);
++	}
+ 
+ 	if (mdiodev->reset_ctrl) {
+ 		if (value)
