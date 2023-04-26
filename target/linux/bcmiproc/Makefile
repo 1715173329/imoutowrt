@@ -21,6 +21,8 @@ endef
 
 include $(INCLUDE_DIR)/target.mk
 
+DEFAULT_PACKAGES += kmod-bnxt-en
+
 KERNELNAME:=Image
 
 $(eval $(call BuildTarget))
