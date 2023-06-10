@@ -23,7 +23,7 @@ DEFAULT_PACKAGES += alsa-utils partx-utils mkf2fs fdisk kmod-button-hotplug kmod
 		    kmod-8139too kmod-tg3 kmod-fs-f2fs kmod-ac97 kmod-sound-hda-core kmod-sound-hda-codec-realtek \
 		    kmod-sound-hda-codec-via kmod-sound-via82xx kmod-sound-hda-intel kmod-sound-hda-codec-hdmi \
 		    kmod-sound-i8x0 kmod-usb-audio kmod-usb-net kmod-usb-net-asix kmod-usb-net-asix-ax88179 \
-		    kmod-usb-net-rtl8150 kmod-usb-net-rtl8152-vendor autocore-x86 automount
+		    kmod-usb-net-rtl8150 kmod-usb-net-rtl8152-vendor autocore automount
 
 $(eval $(call BuildTarget))
 
