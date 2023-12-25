@@ -1,0 +1,63 @@
+From f8a852f1f86391127ab57b1c41fe0e62bc14f27c Mon Sep 17 00:00:00 2001
+From: Michael Riesch <michael.riesch@wolfvision.net>
+Date: Tue, 24 Jan 2023 06:47:02 +0100
+Subject: [PATCH] drm/rockchip: rgb: embed drm_encoder into rockchip_encoder
+
+Commit 540b8f271e53 ("drm/rockchip: Embed drm_encoder into
+rockchip_decoder") provides the means to pass the endpoint ID to the
+VOP2 driver, which sets the interface MUX accordingly. However, this
+step has not yet been carried out for the RGB output block. Embed the
+drm_encoder structure into the rockchip_encoder structure and set the
+endpoint ID correctly.
+
+Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
+Reviewed-by: Sascha Hauer <s.hauer@pengutronix.de>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20230124054706.3921383-3-michael.riesch@wolfvision.net
+---
+ drivers/gpu/drm/rockchip/rockchip_rgb.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+--- a/drivers/gpu/drm/rockchip/rockchip_rgb.c
++++ b/drivers/gpu/drm/rockchip/rockchip_rgb.c
+@@ -22,13 +22,11 @@
+ #include "rockchip_drm_vop.h"
+ #include "rockchip_rgb.h"
+ 
+-#define encoder_to_rgb(c) container_of(c, struct rockchip_rgb, encoder)
+-
+ struct rockchip_rgb {
+ 	struct device *dev;
+ 	struct drm_device *drm_dev;
+ 	struct drm_bridge *bridge;
+-	struct drm_encoder encoder;
++	struct rockchip_encoder encoder;
+ 	struct drm_connector connector;
+ 	int output_mode;
+ };
+@@ -125,7 +123,7 @@ struct rockchip_rgb *rockchip_rgb_init(s
+ 		return ERR_PTR(ret);
+ 	}
+ 
+-	encoder = &rgb->encoder;
++	encoder = &rgb->encoder.encoder;
+ 	encoder->possible_crtcs = drm_crtc_mask(crtc);
+ 
+ 	ret = drm_simple_encoder_init(drm_dev, encoder, DRM_MODE_ENCODER_NONE);
+@@ -161,6 +159,8 @@ struct rockchip_rgb *rockchip_rgb_init(s
+ 		goto err_free_encoder;
+ 	}
+ 
++	rgb->encoder.crtc_endpoint_id = endpoint_id;
++
+ 	ret = drm_connector_attach_encoder(connector, encoder);
+ 	if (ret < 0) {
+ 		DRM_DEV_ERROR(drm_dev->dev,
+@@ -182,6 +182,6 @@ void rockchip_rgb_fini(struct rockchip_r
+ {
+ 	drm_panel_bridge_remove(rgb->bridge);
+ 	drm_connector_cleanup(&rgb->connector);
+-	drm_encoder_cleanup(&rgb->encoder);
++	drm_encoder_cleanup(&rgb->encoder.encoder);
+ }
+ EXPORT_SYMBOL_GPL(rockchip_rgb_fini);

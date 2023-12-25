@@ -1,0 +1,45 @@
+From 0020d4cfa3eea0e5fad23af49411217da854fc83 Mon Sep 17 00:00:00 2001
+From: John Keeping <john@metanate.com>
+Date: Thu, 10 Nov 2022 17:24:14 +0000
+Subject: [PATCH] drm/rockchip: avoid duplicate mappings for IOMMU devices
+
+If a buffer is allocated with alloc_kmap, then it is vmap'd on creation
+and there is no reason to map it again in rockchip_gem_prime_vmap() when
+the existing mapping can be used.
+
+Signed-off-by: John Keeping <john@metanate.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20221110172415.2853420-1-john@metanate.com
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_gem.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
+
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_gem.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_gem.c
+@@ -515,8 +515,14 @@ int rockchip_gem_prime_vmap(struct drm_g
+ 	struct rockchip_gem_object *rk_obj = to_rockchip_obj(obj);
+ 
+ 	if (rk_obj->pages) {
+-		void *vaddr = vmap(rk_obj->pages, rk_obj->num_pages, VM_MAP,
+-				  pgprot_writecombine(PAGE_KERNEL));
++		void *vaddr;
++
++		if (rk_obj->kvaddr)
++			vaddr = rk_obj->kvaddr;
++		else
++			vaddr = vmap(rk_obj->pages, rk_obj->num_pages, VM_MAP,
++				     pgprot_writecombine(PAGE_KERNEL));
++
+ 		if (!vaddr)
+ 			return -ENOMEM;
+ 		iosys_map_set_vaddr(map, vaddr);
+@@ -536,7 +542,8 @@ void rockchip_gem_prime_vunmap(struct dr
+ 	struct rockchip_gem_object *rk_obj = to_rockchip_obj(obj);
+ 
+ 	if (rk_obj->pages) {
+-		vunmap(map->vaddr);
++		if (map->vaddr != rk_obj->kvaddr)
++			vunmap(map->vaddr);
+ 		return;
+ 	}
+ 

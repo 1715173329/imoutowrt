@@ -1,0 +1,81 @@
+From 03db8f25cf16c579fe75fd2230bbe64c221bfe25 Mon Sep 17 00:00:00 2001
+From: Michael Riesch <michael.riesch@wolfvision.net>
+Date: Tue, 24 Jan 2023 06:47:03 +0100
+Subject: [PATCH] drm/rockchip: rgb: add video_port parameter to init function
+
+The VOP2 driver has more than one video port, hence the hard-coded
+port id will not work anymore. Add an extra parameter for the video
+port id to the rockchip_rgb_init function.
+
+Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
+Reviewed-by: Sascha Hauer <s.hauer@pengutronix.de>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20230124054706.3921383-4-michael.riesch@wolfvision.net
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.c | 2 +-
+ drivers/gpu/drm/rockchip/rockchip_rgb.c     | 9 +++++----
+ drivers/gpu/drm/rockchip/rockchip_rgb.h     | 6 ++++--
+ 3 files changed, 10 insertions(+), 7 deletions(-)
+
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+@@ -2234,7 +2234,7 @@ static int vop_bind(struct device *dev,
+ 		goto err_disable_pm_runtime;
+ 
+ 	if (vop->data->feature & VOP_FEATURE_INTERNAL_RGB) {
+-		vop->rgb = rockchip_rgb_init(dev, &vop->crtc, vop->drm_dev);
++		vop->rgb = rockchip_rgb_init(dev, &vop->crtc, vop->drm_dev, 0);
+ 		if (IS_ERR(vop->rgb)) {
+ 			ret = PTR_ERR(vop->rgb);
+ 			goto err_disable_pm_runtime;
+--- a/drivers/gpu/drm/rockchip/rockchip_rgb.c
++++ b/drivers/gpu/drm/rockchip/rockchip_rgb.c
+@@ -72,7 +72,8 @@ struct drm_encoder_helper_funcs rockchip
+ 
+ struct rockchip_rgb *rockchip_rgb_init(struct device *dev,
+ 				       struct drm_crtc *crtc,
+-				       struct drm_device *drm_dev)
++				       struct drm_device *drm_dev,
++				       int video_port)
+ {
+ 	struct rockchip_rgb *rgb;
+ 	struct drm_encoder *encoder;
+@@ -90,7 +91,7 @@ struct rockchip_rgb *rockchip_rgb_init(s
+ 	rgb->dev = dev;
+ 	rgb->drm_dev = drm_dev;
+ 
+-	port = of_graph_get_port_by_id(dev->of_node, 0);
++	port = of_graph_get_port_by_id(dev->of_node, video_port);
+ 	if (!port)
+ 		return ERR_PTR(-EINVAL);
+ 
+@@ -103,8 +104,8 @@ struct rockchip_rgb *rockchip_rgb_init(s
+ 			continue;
+ 
+ 		child_count++;
+-		ret = drm_of_find_panel_or_bridge(dev->of_node, 0, endpoint_id,
+-						  &panel, &bridge);
++		ret = drm_of_find_panel_or_bridge(dev->of_node, video_port,
++						  endpoint_id, &panel, &bridge);
+ 		if (!ret) {
+ 			of_node_put(endpoint);
+ 			break;
+--- a/drivers/gpu/drm/rockchip/rockchip_rgb.h
++++ b/drivers/gpu/drm/rockchip/rockchip_rgb.h
+@@ -8,12 +8,14 @@
+ #ifdef CONFIG_ROCKCHIP_RGB
+ struct rockchip_rgb *rockchip_rgb_init(struct device *dev,
+ 				       struct drm_crtc *crtc,
+-				       struct drm_device *drm_dev);
++				       struct drm_device *drm_dev,
++				       int video_port);
+ void rockchip_rgb_fini(struct rockchip_rgb *rgb);
+ #else
+ static inline struct rockchip_rgb *rockchip_rgb_init(struct device *dev,
+ 						     struct drm_crtc *crtc,
+-						     struct drm_device *drm_dev)
++						     struct drm_device *drm_dev,
++						     int video_port)
+ {
+ 	return NULL;
+ }

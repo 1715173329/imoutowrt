@@ -1,0 +1,47 @@
+From 582212ee1611f77e0360d249f11c0f703ed723dc Mon Sep 17 00:00:00 2001
+From: Brian Norris <briannorris@chromium.org>
+Date: Mon, 31 Oct 2022 10:16:01 -0700
+Subject: [PATCH] drm/rockchip: vop: Quiet always-warning AFBC log
+
+The downstream code from which this was derived didn't ever run through
+this 'switch' block with non-AFBC formats, but the upstream code does --
+we use this function to probe whether a given format is supported.
+
+Demote the warning to eliminate this sort of warning seen on every
+boot:
+
+  [drm] unsupported AFBC format[3231564e]
+
+And make it warn more than once, because if we *actually* care to see
+what formats we're probing/rejecting and for what reasons, we probably
+care about more than just the first message.
+
+Drop the comment, because one of the two *is* commonly reachable.
+
+And lastly, drop the unreachable return; we'd do better to let the
+compiler complain if we start hitting this unexpectedly.
+
+Signed-off-by: Brian Norris <briannorris@chromium.org>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20221031101557.1.Ic1569d394173c1c3016142fee4bb87a09753db94@changeid
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+@@ -324,13 +324,10 @@ static int vop_convert_afbc_format(uint3
+ 	case DRM_FORMAT_RGB565:
+ 	case DRM_FORMAT_BGR565:
+ 		return AFBC_FMT_RGB565;
+-	/* either of the below should not be reachable */
+ 	default:
+-		DRM_WARN_ONCE("unsupported AFBC format[%08x]\n", format);
++		DRM_DEBUG_KMS("unsupported AFBC format[%08x]\n", format);
+ 		return -EINVAL;
+ 	}
+-
+-	return -EINVAL;
+ }
+ 
+ static uint16_t scl_vop_cal_scale(enum scale_mode mode, uint32_t src,

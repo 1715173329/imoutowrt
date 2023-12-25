@@ -1,0 +1,89 @@
+From de13db32b0f89a040b50a51d129b9443159a660a Mon Sep 17 00:00:00 2001
+From: Sascha Hauer <s.hauer@pengutronix.de>
+Date: Thu, 16 Feb 2023 11:24:45 +0100
+Subject: [PATCH] drm/rockchip: dw_hdmi: relax mode_valid hook
+
+The driver checks if the pixel clock of the given mode matches an entry
+in the mpll config table. At least for the Synopsys phy the frequencies
+in the mpll table are meant as a frequency range up to which the entry
+works, not as a frequency that must match the pixel clock. Return
+MODE_OK when the pixelclock is smaller than one of the mpll frequencies
+to allow for more display resolutions.
+Limit this behaviour to the Synopsys phy at the moment and keep the
+current behaviour of forcing exact pixelclock rates for the other phys
+until it has been sorted out how and if the vendor specific phys work
+with non standard clock rates.
+
+Tested-by: Michael Riesch <michael.riesch@wolfvision.net>
+Link: https://lore.kernel.org/r/20220926080435.259617-2-s.hauer@pengutronix.de
+Tested-by: Nicolas Frattaroli <frattaroli.nicolas@gmail.com>
+Tested-by: Dan Johansen <strit@manjaro.org>
+Link: https://lore.kernel.org/r/20230118132213.2911418-2-s.hauer@pengutronix.de
+Signed-off-by: Sascha Hauer <s.hauer@pengutronix.de>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20230216102447.582905-3-s.hauer@pengutronix.de
+---
+ drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c | 26 +++++++++++++++------
+ 1 file changed, 19 insertions(+), 7 deletions(-)
+
+--- a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+@@ -74,6 +74,7 @@ struct rockchip_hdmi {
+ 	struct regmap *regmap;
+ 	struct rockchip_encoder encoder;
+ 	const struct rockchip_hdmi_chip_data *chip_data;
++	const struct dw_hdmi_plat_data *plat_data;
+ 	struct clk *ref_clk;
+ 	struct clk *grf_clk;
+ 	struct dw_hdmi *hdmi;
+@@ -241,23 +242,32 @@ static int rockchip_hdmi_parse_dt(struct
+ }
+ 
+ static enum drm_mode_status
+-dw_hdmi_rockchip_mode_valid(struct dw_hdmi *hdmi, void *data,
++dw_hdmi_rockchip_mode_valid(struct dw_hdmi *dw_hdmi, void *data,
+ 			    const struct drm_display_info *info,
+ 			    const struct drm_display_mode *mode)
+ {
++	struct rockchip_hdmi *hdmi = data;
+ 	const struct dw_hdmi_mpll_config *mpll_cfg = rockchip_mpll_cfg;
+ 	int pclk = mode->clock * 1000;
+-	bool valid = false;
++	bool exact_match = hdmi->plat_data->phy_force_vendor;
+ 	int i;
+ 
+ 	for (i = 0; mpll_cfg[i].mpixelclock != (~0UL); i++) {
+-		if (pclk == mpll_cfg[i].mpixelclock) {
+-			valid = true;
+-			break;
+-		}
++		/*
++		 * For vendor specific phys force an exact match of the pixelclock
++		 * to preserve the original behaviour of the driver.
++		 */
++		if (exact_match && pclk == mpll_cfg[i].mpixelclock)
++			return MODE_OK;
++		/*
++		 * The Synopsys phy can work with pixelclocks up to the value given
++		 * in the corresponding mpll_cfg entry.
++		 */
++		if (!exact_match && pclk <= mpll_cfg[i].mpixelclock)
++			return MODE_OK;
+ 	}
+ 
+-	return (valid) ? MODE_OK : MODE_BAD;
++	return MODE_BAD;
+ }
+ 
+ static void dw_hdmi_rockchip_encoder_disable(struct drm_encoder *encoder)
+@@ -546,8 +556,10 @@ static int dw_hdmi_rockchip_bind(struct
+ 		return -ENOMEM;
+ 
+ 	hdmi->dev = &pdev->dev;
++	hdmi->plat_data = plat_data;
+ 	hdmi->chip_data = plat_data->phy_data;
+ 	plat_data->phy_data = hdmi;
++	plat_data->priv_data = hdmi;
+ 	encoder = &hdmi->encoder.encoder;
+ 
+ 	encoder->possible_crtcs = drm_of_find_possible_crtcs(drm, dev->of_node);

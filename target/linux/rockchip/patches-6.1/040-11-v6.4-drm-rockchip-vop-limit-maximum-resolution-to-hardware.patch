@@ -1,0 +1,208 @@
+From 8e140cb60270ee8b5b41e80806323c668d8d4da9 Mon Sep 17 00:00:00 2001
+From: Sascha Hauer <s.hauer@pengutronix.de>
+Date: Thu, 16 Feb 2023 11:24:44 +0100
+Subject: [PATCH] drm/rockchip: vop: limit maximum resolution to hardware
+ capabilities
+
+The different VOP variants support different maximum resolutions. Reject
+resolutions that are not supported by a specific variant.
+
+This hasn't been a problem in the upstream driver so far as 1920x1080
+has been the maximum resolution supported by the HDMI driver and that
+resolution is supported by all VOP variants. Now with higher resolutions
+supported in the HDMI driver we have to limit the resolutions to the
+ones supported by the VOP.
+
+The actual maximum resolutions are taken from the Rockchip downstream
+Kernel.
+
+Signed-off-by: Sascha Hauer <s.hauer@pengutronix.de>
+[dropped the vdisplay > height check after talking to Sascha, as according to
+ the vendor code "Actually vop hardware has no output height limit"
+ (from vendor commit "drm/rockchip: vop: get rid of max_output.height check")
+ and the height-check broke the px30-minievb display]
+
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20230216102447.582905-2-s.hauer@pengutronix.de
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.c  | 12 ++++++++++++
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.h  |  6 ++++++
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.h |  5 -----
+ drivers/gpu/drm/rockchip/rockchip_vop_reg.c  | 18 ++++++++++++++++++
+ 4 files changed, 36 insertions(+), 5 deletions(-)
+
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+@@ -1180,6 +1180,17 @@ static void vop_crtc_disable_vblank(stru
+ 	spin_unlock_irqrestore(&vop->irq_lock, flags);
+ }
+ 
++static enum drm_mode_status vop_crtc_mode_valid(struct drm_crtc *crtc,
++						const struct drm_display_mode *mode)
++{
++	struct vop *vop = to_vop(crtc);
++
++	if (vop->data->max_output.width && mode->hdisplay > vop->data->max_output.width)
++		return MODE_BAD_HVALUE;
++
++	return MODE_OK;
++}
++
+ static bool vop_crtc_mode_fixup(struct drm_crtc *crtc,
+ 				const struct drm_display_mode *mode,
+ 				struct drm_display_mode *adjusted_mode)
+@@ -1591,6 +1602,7 @@ static void vop_crtc_atomic_flush(struct
+ }
+ 
+ static const struct drm_crtc_helper_funcs vop_crtc_helper_funcs = {
++	.mode_valid = vop_crtc_mode_valid,
+ 	.mode_fixup = vop_crtc_mode_fixup,
+ 	.atomic_check = vop_crtc_atomic_check,
+ 	.atomic_begin = vop_crtc_atomic_begin,
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.h
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.h
+@@ -42,6 +42,11 @@ enum vop_data_format {
+ 	VOP_FMT_YUV444SP,
+ };
+ 
++struct vop_rect {
++	int width;
++	int height;
++};
++
+ struct vop_reg {
+ 	uint32_t mask;
+ 	uint16_t offset;
+@@ -225,6 +230,7 @@ struct vop_data {
+ 	const struct vop_win_data *win;
+ 	unsigned int win_size;
+ 	unsigned int lut_size;
++	struct vop_rect max_output;
+ 
+ #define VOP_FEATURE_OUTPUT_RGB10	BIT(0)
+ #define VOP_FEATURE_INTERNAL_RGB	BIT(1)
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.h
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.h
+@@ -27,11 +27,6 @@ enum win_dly_mode {
+ 	VOP2_DLY_MODE_MAX,
+ };
+ 
+-struct vop_rect {
+-	int width;
+-	int height;
+-};
+-
+ enum vop2_scale_up_mode {
+ 	VOP2_SCALE_UP_NRST_NBOR,
+ 	VOP2_SCALE_UP_BIL,
+--- a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
++++ b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
+@@ -181,6 +181,7 @@ static const struct vop_data rk3036_vop
+ 	.output = &rk3036_output,
+ 	.win = rk3036_vop_win_data,
+ 	.win_size = ARRAY_SIZE(rk3036_vop_win_data),
++	.max_output = { 1920, 1080 },
+ };
+ 
+ static const struct vop_win_phy rk3126_win1_data = {
+@@ -213,6 +214,7 @@ static const struct vop_data rk3126_vop
+ 	.output = &rk3036_output,
+ 	.win = rk3126_vop_win_data,
+ 	.win_size = ARRAY_SIZE(rk3126_vop_win_data),
++	.max_output = { 1920, 1080 },
+ };
+ 
+ static const int px30_vop_intrs[] = {
+@@ -340,6 +342,7 @@ static const struct vop_data px30_vop_bi
+ 	.output = &px30_output,
+ 	.win = px30_vop_big_win_data,
+ 	.win_size = ARRAY_SIZE(px30_vop_big_win_data),
++	.max_output = { 1920, 1080 },
+ };
+ 
+ static const struct vop_win_data px30_vop_lit_win_data[] = {
+@@ -356,6 +359,7 @@ static const struct vop_data px30_vop_li
+ 	.output = &px30_output,
+ 	.win = px30_vop_lit_win_data,
+ 	.win_size = ARRAY_SIZE(px30_vop_lit_win_data),
++	.max_output = { 1920, 1080 },
+ };
+ 
+ static const struct vop_scl_regs rk3066_win_scl = {
+@@ -479,6 +483,7 @@ static const struct vop_data rk3066_vop
+ 	.output = &rk3066_output,
+ 	.win = rk3066_vop_win_data,
+ 	.win_size = ARRAY_SIZE(rk3066_vop_win_data),
++	.max_output = { 1920, 1080 },
+ };
+ 
+ static const struct vop_scl_regs rk3188_win_scl = {
+@@ -585,6 +590,7 @@ static const struct vop_data rk3188_vop
+ 	.win = rk3188_vop_win_data,
+ 	.win_size = ARRAY_SIZE(rk3188_vop_win_data),
+ 	.feature = VOP_FEATURE_INTERNAL_RGB,
++	.max_output = { 2048, 1536 },
+ };
+ 
+ static const struct vop_scl_extension rk3288_win_full_scl_ext = {
+@@ -732,6 +738,12 @@ static const struct vop_data rk3288_vop
+ 	.win = rk3288_vop_win_data,
+ 	.win_size = ARRAY_SIZE(rk3288_vop_win_data),
+ 	.lut_size = 1024,
++	/*
++	 * This is the maximum resolution for the VOPB, the VOPL can only do
++	 * 2560x1600, but we can't distinguish them as they have the same
++	 * compatible.
++	 */
++	.max_output = { 3840, 2160 },
+ };
+ 
+ static const int rk3368_vop_intrs[] = {
+@@ -833,6 +845,7 @@ static const struct vop_data rk3368_vop
+ 	.misc = &rk3368_misc,
+ 	.win = rk3368_vop_win_data,
+ 	.win_size = ARRAY_SIZE(rk3368_vop_win_data),
++	.max_output = { 4096, 2160 },
+ };
+ 
+ static const struct vop_intr rk3366_vop_intr = {
+@@ -854,6 +867,7 @@ static const struct vop_data rk3366_vop
+ 	.misc = &rk3368_misc,
+ 	.win = rk3368_vop_win_data,
+ 	.win_size = ARRAY_SIZE(rk3368_vop_win_data),
++	.max_output = { 4096, 2160 },
+ };
+ 
+ static const struct vop_output rk3399_output = {
+@@ -984,6 +998,7 @@ static const struct vop_data rk3399_vop_
+ 	.win_size = ARRAY_SIZE(rk3399_vop_win_data),
+ 	.win_yuv2yuv = rk3399_vop_big_win_yuv2yuv_data,
+ 	.lut_size = 1024,
++	.max_output = { 4096, 2160 },
+ };
+ 
+ static const struct vop_win_data rk3399_vop_lit_win_data[] = {
+@@ -1010,6 +1025,7 @@ static const struct vop_data rk3399_vop_
+ 	.win_size = ARRAY_SIZE(rk3399_vop_lit_win_data),
+ 	.win_yuv2yuv = rk3399_vop_lit_win_yuv2yuv_data,
+ 	.lut_size = 256,
++	.max_output = { 2560, 1600 },
+ };
+ 
+ static const struct vop_win_data rk3228_vop_win_data[] = {
+@@ -1029,6 +1045,7 @@ static const struct vop_data rk3228_vop
+ 	.misc = &rk3368_misc,
+ 	.win = rk3228_vop_win_data,
+ 	.win_size = ARRAY_SIZE(rk3228_vop_win_data),
++	.max_output = { 4096, 2160 },
+ };
+ 
+ static const struct vop_modeset rk3328_modeset = {
+@@ -1100,6 +1117,7 @@ static const struct vop_data rk3328_vop
+ 	.misc = &rk3328_misc,
+ 	.win = rk3328_vop_win_data,
+ 	.win_size = ARRAY_SIZE(rk3328_vop_win_data),
++	.max_output = { 4096, 2160 },
+ };
+ 
+ static const struct of_device_id vop_driver_dt_match[] = {

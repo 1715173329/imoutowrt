@@ -1,0 +1,62 @@
+From e88adb4ac27a37de4167150b8a6a736d40cf7018 Mon Sep 17 00:00:00 2001
+From: Tom Rix <trix@redhat.com>
+Date: Thu, 16 Mar 2023 09:23:02 -0400
+Subject: [PATCH] drm/rockchip: vop2: fix uninitialized variable possible_crtcs
+
+clang reportes this error
+drivers/gpu/drm/rockchip/rockchip_drm_vop2.c:2322:8: error:
+  variable 'possible_crtcs' is used uninitialized whenever 'if'
+  condition is false [-Werror,-Wsometimes-uninitialized]
+                        if (vp) {
+                            ^~
+drivers/gpu/drm/rockchip/rockchip_drm_vop2.c:2336:36: note:
+  uninitialized use occurs here
+                ret = vop2_plane_init(vop2, win, possible_crtcs);
+                                                 ^~~~~~~~~~~~~~
+drivers/gpu/drm/rockchip/rockchip_drm_vop2.c:2322:4:
+  note: remove the 'if' if its condition is always true
+                        if (vp) {
+                        ^~~~~~~~
+
+The else-statement changes the win->type to OVERLAY without setting the
+possible_crtcs variable.  Rework the block, initialize possible_crtcs to
+0 to remove the else-statement.  Split the else-if-statement out to its
+own if-statement so the OVERLAY check will catch when the win-type has
+been changed.
+
+Fixes: 368419a2d429 ("drm/rockchip: vop2: initialize possible_crtcs properly")
+Signed-off-by: Tom Rix <trix@redhat.com>
+Acked-by: Michael Riesch <michael.riesch@wolfvision.net>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20230316132302.531724-1-trix@redhat.com
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
+@@ -2304,7 +2304,7 @@ static int vop2_create_crtcs(struct vop2
+ 	nvp = 0;
+ 	for (i = 0; i < vop2->registered_num_wins; i++) {
+ 		struct vop2_win *win = &vop2->win[i];
+-		u32 possible_crtcs;
++		u32 possible_crtcs = 0;
+ 
+ 		if (vop2->data->soc_id == 3566) {
+ 			/*
+@@ -2330,12 +2330,11 @@ static int vop2_create_crtcs(struct vop2
+ 				/* change the unused primary window to overlay window */
+ 				win->type = DRM_PLANE_TYPE_OVERLAY;
+ 			}
+-		} else if (win->type == DRM_PLANE_TYPE_OVERLAY) {
+-			possible_crtcs = (1 << nvps) - 1;
+-		} else {
+-			possible_crtcs = 0;
+ 		}
+ 
++		if (win->type == DRM_PLANE_TYPE_OVERLAY)
++			possible_crtcs = (1 << nvps) - 1;
++
+ 		ret = vop2_plane_init(vop2, win, possible_crtcs);
+ 		if (ret) {
+ 			drm_err(vop2->drm, "failed to init plane %s: %d\n",

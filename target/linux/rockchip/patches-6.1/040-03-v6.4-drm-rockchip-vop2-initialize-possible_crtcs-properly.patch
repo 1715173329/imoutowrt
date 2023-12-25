@@ -1,0 +1,38 @@
+From 368419a2d429e2438bef333959732c640310bdc7 Mon Sep 17 00:00:00 2001
+From: Michael Riesch <michael.riesch@wolfvision.net>
+Date: Tue, 24 Jan 2023 06:47:01 +0100
+Subject: [PATCH] drm/rockchip: vop2: initialize possible_crtcs properly
+
+The variable possible_crtcs is only initialized for primary and
+overlay planes. Since the VOP2 driver only supports these plane
+types at the moment, the current code is safe. However, in order
+to provide a future-proof solution, fix the initialization of
+the variable.
+
+Reported-by: kernel test robot <lkp@intel.com>
+Reported-by: Dan Carpenter <error27@gmail.com>
+Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
+Reviewed-by: Sascha Hauer <s.hauer@pengutronix.de>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20230124054706.3921383-2-michael.riesch@wolfvision.net
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
+@@ -2324,10 +2324,11 @@ static int vop2_create_crtc(struct vop2
+ 				/* change the unused primary window to overlay window */
+ 				win->type = DRM_PLANE_TYPE_OVERLAY;
+ 			}
+-		}
+-
+-		if (win->type == DRM_PLANE_TYPE_OVERLAY)
++		} else if (win->type == DRM_PLANE_TYPE_OVERLAY) {
+ 			possible_crtcs = (1 << nvps) - 1;
++		} else {
++			possible_crtcs = 0;
++		}
+ 
+ 		ret = vop2_plane_init(vop2, win, possible_crtcs);
+ 		if (ret) {

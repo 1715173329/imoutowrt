@@ -1,0 +1,36 @@
+From 3daf391fee830f2343cc6b1ba131b1b5115dea1f Mon Sep 17 00:00:00 2001
+From: Jiapeng Chong <jiapeng.chong@linux.alibaba.com>
+Date: Mon, 17 Oct 2022 16:43:30 +0800
+Subject: [PATCH] drm/rockchip: dsi: Remove the unused function
+ dsi_update_bits()
+
+The function dsi_update_bits() is defined in the dw-mipi-dsi-rockchip.c
+file, but not called elsewhere, so delete this unused function.
+
+drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c:367:20: warning: unused function 'dsi_update_bits'.
+
+https://bugzilla.openanolis.cn/show_bug.cgi?id=2414
+
+Reported-by: Abaci Robot <abaci@linux.alibaba.com>
+Signed-off-by: Jiapeng Chong <jiapeng.chong@linux.alibaba.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20221017084330.94117-1-jiapeng.chong@linux.alibaba.com
+---
+ drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c | 6 ------
+ 1 file changed, 6 deletions(-)
+
+--- a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+@@ -364,12 +364,6 @@ static inline u32 dsi_read(struct dw_mip
+ 	return readl(dsi->base + reg);
+ }
+ 
+-static inline void dsi_update_bits(struct dw_mipi_dsi_rockchip *dsi, u32 reg,
+-				   u32 mask, u32 val)
+-{
+-	dsi_write(dsi, reg, (dsi_read(dsi, reg) & ~mask) | val);
+-}
+-
+ static void dw_mipi_dsi_phy_write(struct dw_mipi_dsi_rockchip *dsi,
+ 				  u8 test_code,
+ 				  u8 test_data)

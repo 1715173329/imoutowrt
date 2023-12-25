@@ -1,0 +1,44 @@
+From 83b61f817f43ed67572d1e241c9f552e0a8bfff4 Mon Sep 17 00:00:00 2001
+From: Sascha Hauer <s.hauer@pengutronix.de>
+Date: Thu, 16 Feb 2023 11:24:46 +0100
+Subject: [PATCH] drm/rockchip: dw_hdmi: Add support for 4k@30 resolution
+
+This adds the PLL/phy settings to support higher resolutions like 4k@30.
+The values were taken from the Rockchip downstream Kernel.
+
+Tested-by: Michael Riesch <michael.riesch@wolfvision.net>
+Link: https://lore.kernel.org/r/20220926080435.259617-3-s.hauer@pengutronix.de
+Tested-by: Nicolas Frattaroli <frattaroli.nicolas@gmail.com>
+Tested-by: Dan Johansen <strit@manjaro.org>
+Link: https://lore.kernel.org/r/20230118132213.2911418-3-s.hauer@pengutronix.de
+Signed-off-by: Sascha Hauer <s.hauer@pengutronix.de>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20230216102447.582905-4-s.hauer@pengutronix.de
+---
+ drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+--- a/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw_hdmi-rockchip.c
+@@ -162,6 +162,12 @@ static const struct dw_hdmi_mpll_config
+ 			{ 0x4064, 0x0003}
+ 		},
+ 	}, {
++		340000000, {
++			{ 0x0040, 0x0003 },
++			{ 0x3b4c, 0x0003 },
++			{ 0x5a64, 0x0003 },
++		},
++	}, {
+ 		~0UL, {
+ 			{ 0x00a0, 0x000a },
+ 			{ 0x2001, 0x000f },
+@@ -187,6 +193,8 @@ static const struct dw_hdmi_curr_ctrl ro
+ 	}, {
+ 		148500000, { 0x0000, 0x0038, 0x0038 },
+ 	}, {
++		600000000, { 0x0000, 0x0000, 0x0000 },
++	}, {
+ 		~0UL,      { 0x0000, 0x0000, 0x0000},
+ 	}
+ };

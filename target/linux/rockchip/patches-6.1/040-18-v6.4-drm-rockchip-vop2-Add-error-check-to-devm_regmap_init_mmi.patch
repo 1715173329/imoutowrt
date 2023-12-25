@@ -1,0 +1,26 @@
+From 4ab9157c7e02019fa8d8ab98d4f9e67e6a7cfad1 Mon Sep 17 00:00:00 2001
+From: Alfredo Cruz <alfredo.carlon@gmail.com>
+Date: Wed, 22 Mar 2023 23:44:11 +0100
+Subject: [PATCH] drm/rockchip: vop2: Add error check to devm_regmap_init_mmio
+
+devm_regmap_init_mmio() may return an invalid pointer in case of an error.
+This patch adds the corresponding IS_ERR check to vop2->map.
+
+Signed-off-by: Alfredo Cruz <alfredo.carlon@gmail.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20230322224411.15612-1-alfredo.carlon@gmail.com
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
+@@ -2682,6 +2682,8 @@ static int vop2_bind(struct device *dev,
+ 	vop2->len = resource_size(res);
+ 
+ 	vop2->map = devm_regmap_init_mmio(dev, vop2->regs, &vop2_regmap_config);
++	if (IS_ERR(vop2->map))
++		return PTR_ERR(vop2->map);
+ 
+ 	ret = vop2_win_init(vop2);
+ 	if (ret)

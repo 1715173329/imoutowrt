@@ -1,0 +1,32 @@
+From 3b4db36c4cd9e7e49babe931d7117cdba0d04ce0 Mon Sep 17 00:00:00 2001
+From: Jacob Keller <jacob.e.keller@intel.com>
+Date: Wed, 22 Feb 2023 17:35:33 -0800
+Subject: [PATCH] drm/rockchip: vop2: use struct_size() in vop2_bind
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Use the overflow-protected struct_size() helper macro to compute the
+allocation size of the vop2 data structure.
+
+Signed-off-by: Jacob Keller <jacob.e.keller@intel.com>
+Cc: Sandy Huang <hjc@rock-chips.com>
+Cc: Heiko Stübner <heiko@sntech.de>
+Cc: David Airlie <airlied@gmail.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20230223013533.1707706-1-jacob.e.keller@intel.com
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop2.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop2.c
+@@ -2658,7 +2658,7 @@ static int vop2_bind(struct device *dev,
+ 		return -ENODEV;
+ 
+ 	/* Allocate vop2 struct and its vop2_win array */
+-	alloc_size = sizeof(*vop2) + sizeof(*vop2->win) * vop2_data->win_size;
++	alloc_size = struct_size(vop2, win, vop2_data->win_size);
+ 	vop2 = devm_kzalloc(dev, alloc_size, GFP_KERNEL);
+ 	if (!vop2)
+ 		return -ENOMEM;

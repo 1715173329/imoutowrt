@@ -1,0 +1,33 @@
+From 59585c79f87794c92f040c264b274e86d8522e22 Mon Sep 17 00:00:00 2001
+From: Jiapeng Chong <jiapeng.chong@linux.alibaba.com>
+Date: Wed, 8 Feb 2023 10:34:29 +0800
+Subject: [PATCH] drm/rockchip: dsi: Remove the unused function dsi_read()
+
+The function dsi_read is defined in the dw-mipi-dsi-rockchip.c file, but
+not called elsewhere, so remove this unused function.
+
+drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c:362:19: warning: unused function 'dsi_read'.
+
+Reported-by: Abaci Robot <abaci@linux.alibaba.com>
+Link: https://bugzilla.openanolis.cn/show_bug.cgi?id=3984
+Signed-off-by: Jiapeng Chong <jiapeng.chong@linux.alibaba.com>
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Link: https://patchwork.freedesktop.org/patch/msgid/20230208023429.73696-1-jiapeng.chong@linux.alibaba.com
+---
+ drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c | 5 -----
+ 1 file changed, 5 deletions(-)
+
+--- a/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
++++ b/drivers/gpu/drm/rockchip/dw-mipi-dsi-rockchip.c
+@@ -359,11 +359,6 @@ static inline void dsi_write(struct dw_m
+ 	writel(val, dsi->base + reg);
+ }
+ 
+-static inline u32 dsi_read(struct dw_mipi_dsi_rockchip *dsi, u32 reg)
+-{
+-	return readl(dsi->base + reg);
+-}
+-
+ static void dw_mipi_dsi_phy_write(struct dw_mipi_dsi_rockchip *dsi,
+ 				  u8 test_code,
+ 				  u8 test_data)
