@@ -45,6 +45,7 @@ enum switch_port_speed {
 	SWITCH_PORT_SPEED_10 = 10,
 	SWITCH_PORT_SPEED_100 = 100,
 	SWITCH_PORT_SPEED_1000 = 1000,
+	SWITCH_PORT_SPEED_2500 = 2500,
 };
 
 struct switch_port_link {
