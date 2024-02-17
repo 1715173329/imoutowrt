@@ -8,11 +8,12 @@
  	rk3399-khadas-edge.dtb \
  	rk3399-khadas-edge-captain.dtb \
  	rk3399-khadas-edge-v.dtb \
-@@ -158,6 +159,7 @@ dtb-$(CONFIG_ROCKCHIP_RK3399) += \
+@@ -158,6 +159,8 @@ dtb-$(CONFIG_ROCKCHIP_RK3399) += \
  	rk3399-nanopi-m4b.dtb \
  	rk3399-nanopi-neo4.dtb \
  	rk3399-nanopi-r4s.dtb \
 +	rk3399-nanopi-r4se.dtb \
++	rk3399-sv901-eaio.dtb \
  	rk3399-orangepi.dtb \
  	rk3399-pinebook-pro.dtb \
  	rk3399-pinephone-pro.dtb \

@@ -7,6 +7,12 @@ rockchip_setup_interfaces()
 	local board="$1"
 
 	case "$board" in
+	aio,aio-3399b|\
+	scensmart,sv901-eaio)
+		#ucidef_add_switch "switch0" \
+		#	"7@eth0" "0:lan:0" "1:lan:1" "2:lan:2" "3:lan:3" "4:lan:4" "5:lan:5" "6:wan:6"
+		ucidef_set_interfaces_lan_wan 'lan1 lan2 lan3 sfp' 'wan'
+		;;
 	ariaboard,photonicat|\
 	ezpro,mrkaio-m68s|\
 	firefly,rk3568-roc-pc|\

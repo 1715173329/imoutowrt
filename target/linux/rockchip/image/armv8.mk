@@ -280,6 +280,16 @@ define Device/radxa_rock-pi-e
 endef
 TARGET_DEVICES += radxa_rock-pi-e
 
+define Device/scensmart_sv901-eaio
+  DEVICE_VENDOR := ScenSmart
+  DEVICE_MODEL := SV901 EAIO
+  SOC := rk3399
+  BOOT_FLOW := pine64-bin
+  DEVICE_PACKAGES := kmod-brcmfmac wpad-basic-openssl \
+	brcmfmac-firmware-4356-sdio brcmfmac-nvram-4356-sdio
+endef
+TARGET_DEVICES += scensmart_sv901-eaio
+
 define Device/sinovoip_bpi-r2-pro
   DEVICE_VENDOR := Sinovoip
   DEVICE_MODEL := Bananapi-R2 Pro
