@@ -83,7 +83,11 @@ platform_do_upgrade() {
 	bananapi,bpi-r3|\
 	bananapi,bpi-r3-mini|\
 	bananapi,bpi-r4|\
+	cmcc,rax3000m|\
 	nokia,ea0326gmp|\
+	tplink,tl-xdr4288|\
+	tplink,tl-xdr6086|\
+	tplink,tl-xdr6088|\
 	xiaomi,redmi-router-ax6000-ubootmod)
 		[ -e /dev/fit0 ] && fitblk /dev/fit0
 		[ -e /dev/fitrw ] && fitblk /dev/fitrw
@@ -98,18 +102,6 @@ platform_do_upgrade() {
 			default_do_upgrade "$1"
 			;;
 		ubiblock*)
-			CI_KERNPART="fit"
-			nand_do_upgrade "$1"
-			;;
-		esac
-		;;
-	cmcc,rax3000m)
-		case "$(cmdline_get_var root)" in
-		/dev/mmc*)
-			CI_KERNPART="production"
-			emmc_do_upgrade "$1"
-			;;
-		*)
 			CI_KERNPART="fit"
 			nand_do_upgrade "$1"
 			;;
@@ -133,9 +125,6 @@ platform_do_upgrade() {
 	mediatek,mt7981-rfb|\
 	netcore,n60|\
 	qihoo,360t7|\
-	tplink,tl-xdr4288|\
-	tplink,tl-xdr6086|\
-	tplink,tl-xdr6088|\
 	xiaomi,mi-router-ax3000t-ubootmod|\
 	xiaomi,mi-router-wr30u-ubootmod)
 		CI_KERNPART="fit"
@@ -227,16 +216,10 @@ platform_copy_config() {
 		;;
 	bananapi,bpi-r3|\
 	bananapi,bpi-r3-mini|\
-	bananapi,bpi-r4)
+	bananapi,bpi-r4|\
+	cmcc,rax3000m)
 		case "$(fitblk_get_bootdev)" in
 		mmcblk*)
-			emmc_copy_config
-			;;
-		esac
-		;;
-	cmcc,rax3000m)
-		case "$(cmdline_get_var root)" in
-		/dev/mmc*)
 			emmc_copy_config
 			;;
 		esac

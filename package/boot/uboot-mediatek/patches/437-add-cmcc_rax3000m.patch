@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/configs/mt7981_cmcc_rax3000m-emmc_defconfig
-@@ -0,0 +1,175 @@
+@@ -0,0 +1,176 @@
 +CONFIG_ARM=y
 +CONFIG_POSITION_INDEPENDENT=y
 +CONFIG_ARCH_MEDIATEK=y
@@ -13,6 +13,7 @@
 +CONFIG_DEFAULT_ENV_FILE="cmcc_rax3000m-emmc_env"
 +CONFIG_DEFAULT_FDT_FILE="mediatek/mt7981-cmcc-rax3000m-emmc.dtb"
 +CONFIG_OF_LIBFDT_OVERLAY=y
++CONFIG_OF_SYSTEM_SETUP=y
 +CONFIG_DEBUG_UART_BASE=0x11002000
 +CONFIG_DEBUG_UART_CLOCK=40000000
 +CONFIG_DEBUG_UART=y
@@ -178,7 +179,7 @@
 +CONFIG_SERVERIP="192.168.1.254"
 --- /dev/null
 +++ b/configs/mt7981_cmcc_rax3000m-nand_defconfig
-@@ -0,0 +1,175 @@
+@@ -0,0 +1,176 @@
 +CONFIG_ARM=y
 +CONFIG_POSITION_INDEPENDENT=y
 +CONFIG_ARCH_MEDIATEK=y
@@ -191,6 +192,7 @@
 +CONFIG_DEFAULT_ENV_FILE="cmcc_rax3000m-nand_env"
 +CONFIG_DEFAULT_FDT_FILE="mediatek/mt7981-cmcc-rax3000m-nand.dtb"
 +CONFIG_OF_LIBFDT_OVERLAY=y
++CONFIG_OF_SYSTEM_SETUP=y
 +CONFIG_DEBUG_UART_BASE=0x11002000
 +CONFIG_DEBUG_UART_CLOCK=40000000
 +CONFIG_DEBUG_UART=y
@@ -585,7 +587,7 @@
 +serverip=192.168.1.254
 +loadaddr=0x46000000
 +console=earlycon=uart8250,mmio32,0x11002000 console=ttyS0
-+bootargs=root=/dev/mmcblk0p65
++bootargs=root=/dev/fit0 rootwait
 +bootcmd=if pstore check ; then run boot_recovery ; else run boot_emmc ; fi
 +bootconf=config-1#mt7981b-cmcc-rax3000m-emmc
 +bootdelay=0
@@ -638,11 +640,12 @@
 +_bootmenu_update_title=setenv _bootmenu_update_title ; setenv bootmenu_title "$bootmenu_title       [33m$ver[0m"
 --- /dev/null
 +++ b/cmcc_rax3000m-nand_env
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,57 @@
 +ipaddr=192.168.1.1
 +serverip=192.168.1.254
 +loadaddr=0x46000000
 +console=earlycon=uart8250,mmio32,0x11002000 console=ttyS0
++bootargs=root=/dev/fit0 rootwait
 +bootconf=config-1#mt7981b-cmcc-rax3000m-nand
 +bootcmd=if pstore check ; then run boot_recovery ; else run boot_ubi ; fi
 +bootdelay=0

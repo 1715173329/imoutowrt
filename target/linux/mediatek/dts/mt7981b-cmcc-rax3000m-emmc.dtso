@@ -7,6 +7,13 @@
 	compatible = "cmcc,rax3000m", "mediatek,mt7981";
 
 	fragment@0 {
+		target = <&chosen>;
+		__overlay__ {
+			rootdisk = <&emmc_rootdisk>;
+		};
+	};
+
+	fragment@1 {
 		target = <&mmc0>;
 		__overlay__ {
 			bus-width = <8>;
@@ -19,10 +26,24 @@
 			pinctrl-1 = <&mmc0_pins_uhs>;
 			vmmc-supply = <&reg_3p3v>;
 			status = "okay";
+
+			card@0 {
+				compatible = "mmc-card";
+				reg = <0>;
+
+				block {
+					compatible = "block-device";
+					partitions {
+						emmc_rootdisk: block-partition-production {
+							partname = "production";
+						};
+					};
+				};
+			};
 		};
 	};
 
-	fragment@1 {
+	fragment@2 {
 		target = <&pio>;
 		__overlay__ {
 			mmc0_pins_default: mmc0-pins {
