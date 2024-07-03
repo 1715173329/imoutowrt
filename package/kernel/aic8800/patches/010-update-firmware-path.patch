@@ -1,0 +1,40 @@
+--- a/src/SDIO/driver_fw/driver/aic8800/aic8800_bsp/Makefile
++++ b/src/SDIO/driver_fw/driver/aic8800/aic8800_bsp/Makefile
+@@ -1,7 +1,7 @@
+ CONFIG_SDIO_SUPPORT := y
+ CONFIG_SDIO_PWRCTRL := y
+-CONFIG_AIC_FW_PATH = "/vendor/etc/firmware"
+-#CONFIG_AIC_FW_PATH = "/lib/firmware/aic8800"
++#CONFIG_AIC_FW_PATH = "/vendor/etc/firmware"
++CONFIG_AIC_FW_PATH = "/lib/firmware/aic8800D80"
+ export CONFIG_AIC_FW_PATH
+ ccflags-y += -DCONFIG_AIC_FW_PATH=\"$(CONFIG_AIC_FW_PATH)\"
+ 
+--- a/src/USB/driver_fw/drivers/aic8800/aic_load_fw/aicbluetooth.c
++++ b/src/USB/driver_fw/drivers/aic8800/aic_load_fw/aicbluetooth.c
+@@ -168,11 +168,7 @@ enum aicbsp_cpmode_type {
+ #define AIC_HW_INFO 0x21
+ 
+ #define FW_PATH_MAX 200
+-#if defined(CONFIG_PLATFORM_UBUNTU)
+ static const char* aic_default_fw_path = "/lib/firmware";
+-#else
+-static const char* aic_default_fw_path = "/vendor/etc/firmware";
+-#endif
+ char aic_fw_path[FW_PATH_MAX];
+ module_param_string(aic_fw_path, aic_fw_path, FW_PATH_MAX, 0660);
+ #ifdef CONFIG_M2D_OTA_AUTO_SUPPORT
+--- a/src/USB/driver_fw/drivers/aic_btusb/aic_btusb.c
++++ b/src/USB/driver_fw/drivers/aic_btusb/aic_btusb.c
+@@ -2300,11 +2300,7 @@ struct aicbsp_info_t aicbsp_info = {
+ #define FW_PATH_MAX 200
+ 
+ char aic_fw_path[FW_PATH_MAX];
+-#if (CONFIG_BLUEDROID == 0)
+ static const char* aic_default_fw_path = "/lib/firmware/aic8800DC";
+-#else
+-static const char* aic_default_fw_path = "/vendor/etc/firmware";
+-#endif
+ #endif //CONFIG_USE_FW_REQUEST
+ 
+ static struct aicbt_info_t aicbt_info = {

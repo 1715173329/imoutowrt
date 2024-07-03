@@ -1,0 +1,43 @@
+--- a/src/USB/driver_fw/drivers/aic_btusb/aic_btusb.c
++++ b/src/USB/driver_fw/drivers/aic_btusb/aic_btusb.c
+@@ -1456,6 +1456,7 @@ static long btchr_ioctl(struct file *fil
+             return 1;
+         case DWFW_CMPLT:
+             AICBT_INFO(" btchr_ioctl DWFW_CMPLT");
++            __attribute__((__fallthrough__));
+ #if 1
+ 	case SET_ISO_CFG:
+             AICBT_INFO("btchr_ioctl SET_ISO_CFG");
+@@ -1465,6 +1466,7 @@ static long btchr_ioctl(struct file *fil
+ 		//hdev->voice_setting = *(uint16_t*)arg;
+ 		AICBT_INFO(" voice settings = %d", hdev->voice_setting);
+ 		//return 1;
++        __attribute__((__fallthrough__));
+ #endif
+         case GET_USB_INFO:
+ 			//ret = download_patch(fw_info,1);
+@@ -1493,14 +1495,6 @@ static long btchr_ioctl(struct file *fil
+ 
+ }
+ 
+-#ifdef CONFIG_PLATFORM_UBUNTU//AIDEN
+-typedef u32		compat_uptr_t;
+-static inline void __user *compat_ptr(compat_uptr_t uptr)
+-{
+-	return (void __user *)(unsigned long)uptr;
+-}
+-#endif
+-
+ #ifdef CONFIG_COMPAT
+ static long compat_btchr_ioctl (struct file *filp, unsigned int cmd, unsigned long arg)
+ {
+@@ -5118,7 +5112,9 @@ static void btusb_disconnect(struct usb_
+ static int btusb_suspend(struct usb_interface *intf, pm_message_t message)
+ {
+     struct btusb_data *data = usb_get_intfdata(intf);
++#ifdef CONFIG_BT_WAKEUP_IN_PM
+     firmware_info *fw_info = data->fw_info;
++#endif
+ 
+     AICBT_INFO("%s: event 0x%x, suspend count %d", __func__,
+             message.event, data->suspend_count);

@@ -1,0 +1,301 @@
+--- a/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_mod_params.c
++++ b/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_mod_params.c
+@@ -1574,7 +1574,10 @@ if (rwnx_hw->mod_params->custregd) {
+                "\n\n%s: CAUTION: USING PERMISSIVE CUSTOM REGULATORY RULES\n\n",
+                __func__);
+         wiphy->regulatory_flags |= REGULATORY_CUSTOM_REG;
++		/* From kernel 6.5.0, this bit is removed and will be reused later */
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(BUILD_OPENWRT)
+         wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) */
+         wiphy_apply_custom_regulatory(wiphy, regdomain);
+ #elif (LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0))
+         memcpy(country_code, default_ccode, sizeof(default_ccode));
+@@ -1608,7 +1611,10 @@ if (rwnx_hw->mod_params->custregd) {
+ 			   "\n\n%s: CAUTION: USING PERMISSIVE CUSTOM REGULATORY RULES\n\n",
+ 			   __func__);
+ 		wiphy->regulatory_flags |= REGULATORY_CUSTOM_REG;
+-		wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++		/* From kernel 6.5.0, this bit is removed and will be reused later */
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(BUILD_OPENWRT)
++        wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) */
+ 		wiphy_apply_custom_regulatory(wiphy, &rwnx_regdom);
+ #endif
+ 		// Check if custom channel set shall be enabled. In such case only monitor mode is
+@@ -1746,7 +1752,10 @@ void rwnx_custregd(struct rwnx_hw *rwnx_
+     if (!rwnx_hw->mod_params->custregd)
+         return;
+ 
+-    wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++	/* From kernel 6.5.0, this bit is removed and will be reused later */
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(BUILD_OPENWRT)
++	wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) */
+     wiphy->regulatory_flags |= REGULATORY_WIPHY_SELF_MANAGED;
+ 
+     rtnl_lock();
+--- a/src/SDIO/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_mod_params.c
++++ b/src/SDIO/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_mod_params.c
+@@ -1550,7 +1550,10 @@ if (rwnx_hw->mod_params->custregd) {
+                "\n\n%s: CAUTION: USING PERMISSIVE CUSTOM REGULATORY RULES\n\n",
+                __func__);
+         wiphy->regulatory_flags |= REGULATORY_CUSTOM_REG;
++		/* From kernel 6.5.0, this bit is removed and will be reused later */
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(BUILD_OPENWRT)
+         wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) */
+         wiphy_apply_custom_regulatory(wiphy, regdomain);
+ #elif (LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0))
+         memcpy(country_code, default_ccode, sizeof(default_ccode));
+@@ -1584,7 +1587,10 @@ if (rwnx_hw->mod_params->custregd) {
+ 			   "\n\n%s: CAUTION: USING PERMISSIVE CUSTOM REGULATORY RULES\n\n",
+ 			   __func__);
+ 		wiphy->regulatory_flags |= REGULATORY_CUSTOM_REG;
+-		wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++		/* From kernel 6.5.0, this bit is removed and will be reused later */
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(BUILD_OPENWRT)
++        wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) */
+ 		wiphy_apply_custom_regulatory(wiphy, &rwnx_regdom);
+ #endif
+ 		// Check if custom channel set shall be enabled. In such case only monitor mode is
+@@ -1728,7 +1734,10 @@ void rwnx_custregd(struct rwnx_hw *rwnx_
+     if (!rwnx_hw->mod_params->custregd)
+         return;
+ 
+-    wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++	/* From kernel 6.5.0, this bit is removed and will be reused later */
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(BUILD_OPENWRT)
++	wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) */
+     wiphy->regulatory_flags |= REGULATORY_WIPHY_SELF_MANAGED;
+ 
+     rtnl_lock();
+--- a/src/USB/driver_fw/drivers/aic8800/aic8800_fdrv/rwnx_mod_params.c
++++ b/src/USB/driver_fw/drivers/aic8800/aic8800_fdrv/rwnx_mod_params.c
+@@ -1590,7 +1590,10 @@ static void rwnx_set_wiphy_params(struct
+                "\n\n%s: CAUTION: USING PERMISSIVE CUSTOM REGULATORY RULES\n\n",
+                __func__);
+         wiphy->regulatory_flags |= REGULATORY_CUSTOM_REG;
++		/* From kernel 6.5.0, this bit is removed and will be reused later */
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(BUILD_OPENWRT)
+         wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) */
+         wiphy_apply_custom_regulatory(wiphy, regdomain);
+ #elif (LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0))
+         memcpy(country_code, default_ccode, sizeof(default_ccode));
+@@ -1752,7 +1755,10 @@ void rwnx_custregd(struct rwnx_hw *rwnx_
+ // registration (in rwnx_set_wiphy_params()), so nothing has to be done here
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0)
++    /* From kernel 6.5.0, this bit is removed and will be reused later */
++#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(6, 1, 0)) && !defined(BUILD_OPENWRT)
+     wiphy->regulatory_flags |= REGULATORY_IGNORE_STALE_KICKOFF;
++#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0) */
+     wiphy->regulatory_flags |= REGULATORY_WIPHY_SELF_MANAGED;
+ 
+     if (!rwnx_hw->mod_params->custregd)
+--- a/src/USB/driver_fw/drivers/aic8800/aic8800_fdrv/aicwf_wext_linux.c
++++ b/src/USB/driver_fw/drivers/aic8800/aic8800_fdrv/aicwf_wext_linux.c
+@@ -400,7 +400,7 @@ static char *aicwf_get_iwe_stream_mac_ad
+ 	iwe->cmd = SIOCGIWAP;
+ 	iwe->u.ap_addr.sa_family = ARPHRD_ETHER;
+ 
+-	if(scan_re->bss && &scan_re->bss->bssid[0]){
++	if(scan_re && scan_re->bss){
+ 	memcpy(iwe->u.ap_addr.sa_data, scan_re->bss->bssid, ETH_ALEN);
+ 	}
+ 
+--- a/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/aicwf_pcie.c
++++ b/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/aicwf_pcie.c
+@@ -260,7 +260,7 @@ static int aicwf_disconnect_inform(struc
+ 	struct net_device *dev;
+ #ifdef AICWF_RX_REORDER
+ 	struct reord_ctrl_info *reord_info, *tmp;
+-	u8 *macaddr;
++	const unsigned char	*macaddr;
+ 	struct aicwf_rx_priv *rx_priv;
+ #endif
+ 
+--- a/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_debugfs.c
++++ b/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_debugfs.c
+@@ -1973,8 +1973,8 @@ static ssize_t rwnx_dbgfs_rc_fixed_rate_
+     /* Get the station index from MAC address */
+     sscanf(file->f_path.dentry->d_parent->d_iname, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+             &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+-    if (mac == NULL)
+-        return 0;
++    // if (mac == NULL)
++    //     return 0;
+     sta = rwnx_get_sta(priv, mac);
+     if (sta == NULL)
+         return 0;
+--- a/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_main.c
++++ b/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_main.c
+@@ -785,7 +785,9 @@ static void rwnx_csa_finish(struct work_
+ 		} else
+ 			rwnx_txq_vif_stop(vif, RWNX_TXQ_STOP_CHAN, rwnx_hw);
+ 		spin_unlock_bh(&rwnx_hw->cb_lock);
+-#if (LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION)
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)) || defined(BUILD_OPENWRT)
++		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef, 0, 0);
++#elif (LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION)
+ 		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef, 0);
+ #else
+ 		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef);
+@@ -3358,8 +3360,14 @@ static struct rwnx_vif *rwnx_interface_a
+ 	}
+ 
+ 	if (type == NL80211_IFTYPE_AP_VLAN) {
++#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 17, 0)) || defined(BUILD_OPENWRT)
++		//memcpy(ndev->dev_addr, params->macaddr, ETH_ALEN);
++		eth_hw_addr_set(ndev, params->macaddr);
++		memcpy(vif->wdev.address, params->macaddr, ETH_ALEN);
++#else
+ 		memcpy(ndev->dev_addr, params->macaddr, ETH_ALEN);
+ 		memcpy(vif->wdev.address, params->macaddr, ETH_ALEN);
++#endif
+ 	} else {
+ #if LINUX_VERSION_CODE > KERNEL_VERSION(5, 17, 0)
+ 		unsigned char mac_addr[6];
+@@ -5772,12 +5780,14 @@ int rwnx_cfg80211_channel_switch(struct
+     } else {
+         INIT_WORK(&csa->work, rwnx_csa_finish);
+ 
+-#if LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)) || defined(BUILD_OPENWRT)
++		cfg80211_ch_switch_started_notify(dev, &csa->chandef, 0, params->count, false, 0);
++#elif LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION
+ 		cfg80211_ch_switch_started_notify(dev, &csa->chandef, 0, params->count, false);
+ #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+ 		cfg80211_ch_switch_started_notify(dev, &csa->chandef, params->count, params->block_tx);
+ #else
+-        cfg80211_ch_switch_started_notify(dev, &csa->chandef, params->count);
++		cfg80211_ch_switch_started_notify(dev, &csa->chandef, params->count);
+ #endif
+     }
+ 
+@@ -5799,6 +5809,9 @@ rwnx_cfg80211_tdls_mgmt(struct wiphy *wi
+ #else
+ 	u8 *peer,
+ #endif
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)) || defined(BUILD_OPENWRT)
++	int link_id,
++#endif
+ 	u8 action_code,
+ 	u8 dialog_token,
+ 	u16 status_code,
+--- a/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_msg_rx.c
++++ b/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_msg_rx.c
+@@ -880,7 +880,7 @@ static inline int rwnx_rx_sm_disconnect_
+ 	struct net_device *dev;
+ #ifdef AICWF_RX_REORDER
+ 	struct reord_ctrl_info *reord_info, *tmp;
+-	u8 *macaddr;
++	const unsigned char	*macaddr;
+ 	struct aicwf_rx_priv *rx_priv;
+ #endif
+ 
+--- a/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_rx.c
++++ b/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_rx.c
+@@ -453,8 +453,18 @@ static bool rwnx_rx_data_skb(struct rwnx
+ 
+ 	if (amsdu) {
+ 		int count;
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)) || defined(BUILD_OPENWRT)
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)) || defined(BUILD_OPENWRT)
++		ieee80211_amsdu_to_8023s(skb, &list, rwnx_vif->ndev->dev_addr,
++								 RWNX_VIF_TYPE(rwnx_vif), 0, NULL, NULL, NULL);
++#else
++		ieee80211_amsdu_to_8023s(skb, &list, rwnx_vif->ndev->dev_addr,
++								RWNX_VIF_TYPE(rwnx_vif), 0, NULL, NULL, false);
++#endif
++#else
+ 		ieee80211_amsdu_to_8023s(skb, &list, rwnx_vif->ndev->dev_addr,
+ 								 RWNX_VIF_TYPE(rwnx_vif), 0, NULL, NULL);
++#endif
+ 
+ 		count = skb_queue_len(&list);
+ 		if (count > ARRAY_SIZE(rwnx_hw->stats.amsdus_rx))
+--- a/src/SDIO/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_main.c
++++ b/src/SDIO/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_main.c
+@@ -781,7 +781,7 @@ static void rwnx_csa_finish(struct work_
+ 		} else
+ 			rwnx_txq_vif_stop(vif, RWNX_TXQ_STOP_CHAN, rwnx_hw);
+ 		spin_unlock_bh(&rwnx_hw->cb_lock);
+-#if (LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION3)
++#if (LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION3) || defined(BUILD_OPENWRT)
+ 		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef, 0, 0);
+ #elif (LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION)
+ 		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef, 0);
+@@ -5592,6 +5592,9 @@ rwnx_cfg80211_tdls_mgmt(struct wiphy *wi
+ #else
+ 	u8 *peer,
+ #endif
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0)) || defined(BUILD_OPENWRT)
++	int link_id,
++#endif
+ 	u8 action_code,
+ 	u8 dialog_token,
+ 	u16 status_code,
+--- a/src/SDIO/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_radar.c
++++ b/src/SDIO/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_radar.c
+@@ -1282,7 +1282,11 @@ static void rwnx_radar_detected(struct r
+ 	chan_def = rwnx_hw->chanctx_table[rwnx_hw->cur_chanctx].chan_def;
+ 
+ 	rwnx_radar_cancel_cac(&rwnx_hw->radar);
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)) || defined(BUILD_OPENWRT)
++	__cfg80211_radar_event(rwnx_hw->wiphy, &chan_def, true, GFP_KERNEL);
++#else
+ 	cfg80211_radar_event(rwnx_hw->wiphy, &chan_def, GFP_KERNEL);
++#endif
+ 
+ #endif /* CONFIG_RWNX_FULLMAC */
+ }
+--- a/src/USB/driver_fw/drivers/aic8800/aic8800_fdrv/rwnx_main.c
++++ b/src/USB/driver_fw/drivers/aic8800/aic8800_fdrv/rwnx_main.c
+@@ -1072,7 +1072,7 @@ static void rwnx_csa_finish(struct work_
+         } else
+             rwnx_txq_vif_stop(vif, RWNX_TXQ_STOP_CHAN, rwnx_hw);
+         spin_unlock_bh(&rwnx_hw->cb_lock);
+-#if (LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION3)
++#if (LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION3) || defined(BUILD_OPENWRT)
+ 		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef, 0, 0);
+ #elif (LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION)
+ 		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef, 0);
+--- a/src/USB/driver_fw/drivers/aic8800/aic8800_fdrv/rwnx_rx.c
++++ b/src/USB/driver_fw/drivers/aic8800/aic8800_fdrv/rwnx_rx.c
+@@ -464,8 +464,18 @@ static bool rwnx_rx_data_skb(struct rwnx
+ 
+     if (amsdu) {
+         int count;
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)) || defined(BUILD_OPENWRT)
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)) || defined(BUILD_OPENWRT)
++        ieee80211_amsdu_to_8023s(skb, &list, rwnx_vif->ndev->dev_addr,
++                                 RWNX_VIF_TYPE(rwnx_vif), 0, NULL, NULL, NULL);
++#else
++        ieee80211_amsdu_to_8023s(skb, &list, rwnx_vif->ndev->dev_addr,
++                                 RWNX_VIF_TYPE(rwnx_vif), 0, NULL, NULL, false);
++#endif
++#else
+         ieee80211_amsdu_to_8023s(skb, &list, rwnx_vif->ndev->dev_addr,
+                                  RWNX_VIF_TYPE(rwnx_vif), 0, NULL, NULL);
++#endif
+ 
+         count = skb_queue_len(&list);
+         if (count > ARRAY_SIZE(rwnx_hw->stats.amsdus_rx))
+--- a/src/USB/driver_fw/drivers/aic_btusb/aic_btusb.c
++++ b/src/USB/driver_fw/drivers/aic_btusb/aic_btusb.c
+@@ -1531,7 +1531,11 @@ static int btchr_init(void)
+     init_waitqueue_head(&btchr_read_wait);
+     init_waitqueue_head(&bt_dlfw_wait);
+ 
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)) || defined(BUILD_OPENWRT)
++    bt_char_class = class_create(BT_CHAR_DEVICE_NAME);
++#else
+     bt_char_class = class_create(THIS_MODULE, BT_CHAR_DEVICE_NAME);
++#endif
+     if (IS_ERR(bt_char_class)) {
+         AICBT_ERR("Failed to create bt char class");
+         return PTR_ERR(bt_char_class);
