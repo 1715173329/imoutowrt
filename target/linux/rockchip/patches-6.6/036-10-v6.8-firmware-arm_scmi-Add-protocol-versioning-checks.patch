@@ -1,0 +1,382 @@
+From b5efc28a754d2e90b9d52ba5aaa051cc24a5c85d Mon Sep 17 00:00:00 2001
+From: Cristian Marussi <cristian.marussi@arm.com>
+Date: Fri, 1 Dec 2023 13:58:58 +0000
+Subject: [PATCH] firmware: arm_scmi: Add protocol versioning checks
+
+Platform and agent supported protocols versions do not necessarily match.
+
+When talking to an older SCMI platform, supporting only older protocol
+versions, the kernel SCMI agent will downgrade the version of the used
+protocol to match the platform and avoid compatibility issues.
+
+In the case where the kernel/OSPM agent happens to communicate with a
+newer platform which can support newer protocol versions unknown to
+the agent, and potentially backward incompatible, the agent currently
+carries on, silently, in a best-effort approach.
+
+Note that the SCMI specification doesn't provide means to explicitly
+detect the protocol versions used by the agents, neither it is required
+to support multiple, older, protocol versions.
+
+Add an explicit protocol version check to let the agent detect when this
+version mismatch happens and warn the user about this condition.
+
+Signed-off-by: Cristian Marussi <cristian.marussi@arm.com>
+Link: https://lore.kernel.org/r/20231201135858.2367651-1-cristian.marussi@arm.com
+Signed-off-by: Sudeep Holla <sudeep.holla@arm.com>
+---
+ drivers/firmware/arm_scmi/base.c      |  6 +++++-
+ drivers/firmware/arm_scmi/clock.c     |  6 +++++-
+ drivers/firmware/arm_scmi/driver.c    | 12 +++++++++++-
+ drivers/firmware/arm_scmi/perf.c      |  6 +++++-
+ drivers/firmware/arm_scmi/power.c     |  6 +++++-
+ drivers/firmware/arm_scmi/powercap.c  |  6 +++++-
+ drivers/firmware/arm_scmi/protocols.h |  8 +++++++-
+ drivers/firmware/arm_scmi/reset.c     |  6 +++++-
+ drivers/firmware/arm_scmi/sensors.c   |  6 +++++-
+ drivers/firmware/arm_scmi/system.c    |  6 +++++-
+ drivers/firmware/arm_scmi/voltage.c   |  6 +++++-
+ 11 files changed, 63 insertions(+), 11 deletions(-)
+
+--- a/drivers/firmware/arm_scmi/base.c
++++ b/drivers/firmware/arm_scmi/base.c
+@@ -13,6 +13,9 @@
+ #include "common.h"
+ #include "notify.h"
+ 
++/* Updated only after ALL the mandatory features for that version are merged */
++#define SCMI_PROTOCOL_SUPPORTED_VERSION		0x20000
++
+ #define SCMI_BASE_NUM_SOURCES		1
+ #define SCMI_BASE_MAX_CMD_ERR_COUNT	1024
+ 
+@@ -385,7 +388,7 @@ static int scmi_base_protocol_init(const
+ 
+ 	rev->major_ver = PROTOCOL_REV_MAJOR(version),
+ 	rev->minor_ver = PROTOCOL_REV_MINOR(version);
+-	ph->set_priv(ph, rev);
++	ph->set_priv(ph, rev, version);
+ 
+ 	ret = scmi_base_attributes_get(ph);
+ 	if (ret)
+@@ -423,6 +426,7 @@ static const struct scmi_protocol scmi_b
+ 	.instance_init = &scmi_base_protocol_init,
+ 	.ops = NULL,
+ 	.events = &base_protocol_events,
++	.supported_version = SCMI_PROTOCOL_SUPPORTED_VERSION,
+ };
+ 
+ DEFINE_SCMI_PROTOCOL_REGISTER_UNREGISTER(base, scmi_base)
+--- a/drivers/firmware/arm_scmi/clock.c
++++ b/drivers/firmware/arm_scmi/clock.c
+@@ -12,6 +12,9 @@
+ #include "protocols.h"
+ #include "notify.h"
+ 
++/* Updated only after ALL the mandatory features for that version are merged */
++#define SCMI_PROTOCOL_SUPPORTED_VERSION		0x20001
++
+ enum scmi_clock_protocol_cmd {
+ 	CLOCK_ATTRIBUTES = 0x3,
+ 	CLOCK_DESCRIBE_RATES = 0x4,
+@@ -961,7 +964,7 @@ static int scmi_clock_protocol_init(cons
+ 	}
+ 
+ 	cinfo->version = version;
+-	return ph->set_priv(ph, cinfo);
++	return ph->set_priv(ph, cinfo, version);
+ }
+ 
+ static const struct scmi_protocol scmi_clock = {
+@@ -970,6 +973,7 @@ static const struct scmi_protocol scmi_c
+ 	.instance_init = &scmi_clock_protocol_init,
+ 	.ops = &clk_proto_ops,
+ 	.events = &clk_protocol_events,
++	.supported_version = SCMI_PROTOCOL_SUPPORTED_VERSION,
+ };
+ 
+ DEFINE_SCMI_PROTOCOL_REGISTER_UNREGISTER(clock, scmi_clock)
+--- a/drivers/firmware/arm_scmi/driver.c
++++ b/drivers/firmware/arm_scmi/driver.c
+@@ -85,6 +85,7 @@ struct scmi_xfers_info {
+  * @gid: A reference for per-protocol devres management.
+  * @users: A refcount to track effective users of this protocol.
+  * @priv: Reference for optional protocol private data.
++ * @version: Protocol version supported by the platform as detected at runtime.
+  * @ph: An embedded protocol handle that will be passed down to protocol
+  *	initialization code to identify this instance.
+  *
+@@ -97,6 +98,7 @@ struct scmi_protocol_instance {
+ 	void				*gid;
+ 	refcount_t			users;
+ 	void				*priv;
++	unsigned int			version;
+ 	struct scmi_protocol_handle	ph;
+ };
+ 
+@@ -1392,15 +1394,17 @@ static int version_get(const struct scmi
+  *
+  * @ph: A reference to the protocol handle.
+  * @priv: The private data to set.
++ * @version: The detected protocol version for the core to register.
+  *
+  * Return: 0 on Success
+  */
+ static int scmi_set_protocol_priv(const struct scmi_protocol_handle *ph,
+-				  void *priv)
++				  void *priv, u32 version)
+ {
+ 	struct scmi_protocol_instance *pi = ph_to_pi(ph);
+ 
+ 	pi->priv = priv;
++	pi->version = version;
+ 
+ 	return 0;
+ }
+@@ -1845,6 +1849,12 @@ scmi_alloc_init_protocol_instance(struct
+ 	devres_close_group(handle->dev, pi->gid);
+ 	dev_dbg(handle->dev, "Initialized protocol: 0x%X\n", pi->proto->id);
+ 
++	if (pi->version > proto->supported_version)
++		dev_warn(handle->dev,
++			 "Detected UNSUPPORTED higher version 0x%X for protocol 0x%X."
++			 "Backward compatibility is NOT assured.\n",
++			 pi->version, pi->proto->id);
++
+ 	return pi;
+ 
+ clean:
+--- a/drivers/firmware/arm_scmi/perf.c
++++ b/drivers/firmware/arm_scmi/perf.c
+@@ -24,6 +24,9 @@
+ #include "protocols.h"
+ #include "notify.h"
+ 
++/* Updated only after ALL the mandatory features for that version are merged */
++#define SCMI_PROTOCOL_SUPPORTED_VERSION		0x40000
++
+ #define MAX_OPPS		16
+ 
+ enum scmi_performance_protocol_cmd {
+@@ -1134,7 +1137,7 @@ static int scmi_perf_protocol_init(const
+ 	if (ret)
+ 		return ret;
+ 
+-	return ph->set_priv(ph, pinfo);
++	return ph->set_priv(ph, pinfo, version);
+ }
+ 
+ static const struct scmi_protocol scmi_perf = {
+@@ -1143,6 +1146,7 @@ static const struct scmi_protocol scmi_p
+ 	.instance_init = &scmi_perf_protocol_init,
+ 	.ops = &perf_proto_ops,
+ 	.events = &perf_protocol_events,
++	.supported_version = SCMI_PROTOCOL_SUPPORTED_VERSION,
+ };
+ 
+ DEFINE_SCMI_PROTOCOL_REGISTER_UNREGISTER(perf, scmi_perf)
+--- a/drivers/firmware/arm_scmi/power.c
++++ b/drivers/firmware/arm_scmi/power.c
+@@ -13,6 +13,9 @@
+ #include "protocols.h"
+ #include "notify.h"
+ 
++/* Updated only after ALL the mandatory features for that version are merged */
++#define SCMI_PROTOCOL_SUPPORTED_VERSION		0x30000
++
+ enum scmi_power_protocol_cmd {
+ 	POWER_DOMAIN_ATTRIBUTES = 0x3,
+ 	POWER_STATE_SET = 0x4,
+@@ -328,7 +331,7 @@ static int scmi_power_protocol_init(cons
+ 
+ 	pinfo->version = version;
+ 
+-	return ph->set_priv(ph, pinfo);
++	return ph->set_priv(ph, pinfo, version);
+ }
+ 
+ static const struct scmi_protocol scmi_power = {
+@@ -337,6 +340,7 @@ static const struct scmi_protocol scmi_p
+ 	.instance_init = &scmi_power_protocol_init,
+ 	.ops = &power_proto_ops,
+ 	.events = &power_protocol_events,
++	.supported_version = SCMI_PROTOCOL_SUPPORTED_VERSION,
+ };
+ 
+ DEFINE_SCMI_PROTOCOL_REGISTER_UNREGISTER(power, scmi_power)
+--- a/drivers/firmware/arm_scmi/powercap.c
++++ b/drivers/firmware/arm_scmi/powercap.c
+@@ -17,6 +17,9 @@
+ #include "protocols.h"
+ #include "notify.h"
+ 
++/* Updated only after ALL the mandatory features for that version are merged */
++#define SCMI_PROTOCOL_SUPPORTED_VERSION		0x20000
++
+ enum scmi_powercap_protocol_cmd {
+ 	POWERCAP_DOMAIN_ATTRIBUTES = 0x3,
+ 	POWERCAP_CAP_GET = 0x4,
+@@ -975,7 +978,7 @@ scmi_powercap_protocol_init(const struct
+ 	}
+ 
+ 	pinfo->version = version;
+-	return ph->set_priv(ph, pinfo);
++	return ph->set_priv(ph, pinfo, version);
+ }
+ 
+ static const struct scmi_protocol scmi_powercap = {
+@@ -984,6 +987,7 @@ static const struct scmi_protocol scmi_p
+ 	.instance_init = &scmi_powercap_protocol_init,
+ 	.ops = &powercap_proto_ops,
+ 	.events = &powercap_protocol_events,
++	.supported_version = SCMI_PROTOCOL_SUPPORTED_VERSION,
+ };
+ 
+ DEFINE_SCMI_PROTOCOL_REGISTER_UNREGISTER(powercap, scmi_powercap)
+--- a/drivers/firmware/arm_scmi/protocols.h
++++ b/drivers/firmware/arm_scmi/protocols.h
+@@ -174,7 +174,8 @@ struct scmi_protocol_handle {
+ 	struct device *dev;
+ 	const struct scmi_xfer_ops *xops;
+ 	const struct scmi_proto_helpers_ops *hops;
+-	int (*set_priv)(const struct scmi_protocol_handle *ph, void *priv);
++	int (*set_priv)(const struct scmi_protocol_handle *ph, void *priv,
++			u32 version);
+ 	void *(*get_priv)(const struct scmi_protocol_handle *ph);
+ };
+ 
+@@ -310,6 +311,10 @@ typedef int (*scmi_prot_init_ph_fn_t)(co
+  * @ops: Optional reference to the operations provided by the protocol and
+  *	 exposed in scmi_protocol.h.
+  * @events: An optional reference to the events supported by this protocol.
++ * @supported_version: The highest version currently supported for this
++ *		       protocol by the agent. Each protocol implementation
++ *		       in the agent is supposed to downgrade to match the
++ *		       protocol version supported by the platform.
+  */
+ struct scmi_protocol {
+ 	const u8				id;
+@@ -318,6 +323,7 @@ struct scmi_protocol {
+ 	const scmi_prot_init_ph_fn_t		instance_deinit;
+ 	const void				*ops;
+ 	const struct scmi_protocol_events	*events;
++	unsigned int				supported_version;
+ };
+ 
+ #define DEFINE_SCMI_PROTOCOL_REGISTER_UNREGISTER(name, proto)	\
+--- a/drivers/firmware/arm_scmi/reset.c
++++ b/drivers/firmware/arm_scmi/reset.c
+@@ -13,6 +13,9 @@
+ #include "protocols.h"
+ #include "notify.h"
+ 
++/* Updated only after ALL the mandatory features for that version are merged */
++#define SCMI_PROTOCOL_SUPPORTED_VERSION		0x30000
++
+ enum scmi_reset_protocol_cmd {
+ 	RESET_DOMAIN_ATTRIBUTES = 0x3,
+ 	RESET = 0x4,
+@@ -342,7 +345,7 @@ static int scmi_reset_protocol_init(cons
+ 	}
+ 
+ 	pinfo->version = version;
+-	return ph->set_priv(ph, pinfo);
++	return ph->set_priv(ph, pinfo, version);
+ }
+ 
+ static const struct scmi_protocol scmi_reset = {
+@@ -351,6 +354,7 @@ static const struct scmi_protocol scmi_r
+ 	.instance_init = &scmi_reset_protocol_init,
+ 	.ops = &reset_proto_ops,
+ 	.events = &reset_protocol_events,
++	.supported_version = SCMI_PROTOCOL_SUPPORTED_VERSION,
+ };
+ 
+ DEFINE_SCMI_PROTOCOL_REGISTER_UNREGISTER(reset, scmi_reset)
+--- a/drivers/firmware/arm_scmi/sensors.c
++++ b/drivers/firmware/arm_scmi/sensors.c
+@@ -14,6 +14,9 @@
+ #include "protocols.h"
+ #include "notify.h"
+ 
++/* Updated only after ALL the mandatory features for that version are merged */
++#define SCMI_PROTOCOL_SUPPORTED_VERSION		0x30000
++
+ #define SCMI_MAX_NUM_SENSOR_AXIS	63
+ #define	SCMIv2_SENSOR_PROTOCOL		0x10000
+ 
+@@ -1138,7 +1141,7 @@ static int scmi_sensors_protocol_init(co
+ 	if (ret)
+ 		return ret;
+ 
+-	return ph->set_priv(ph, sinfo);
++	return ph->set_priv(ph, sinfo, version);
+ }
+ 
+ static const struct scmi_protocol scmi_sensors = {
+@@ -1147,6 +1150,7 @@ static const struct scmi_protocol scmi_s
+ 	.instance_init = &scmi_sensors_protocol_init,
+ 	.ops = &sensor_proto_ops,
+ 	.events = &sensor_protocol_events,
++	.supported_version = SCMI_PROTOCOL_SUPPORTED_VERSION,
+ };
+ 
+ DEFINE_SCMI_PROTOCOL_REGISTER_UNREGISTER(sensors, scmi_sensors)
+--- a/drivers/firmware/arm_scmi/system.c
++++ b/drivers/firmware/arm_scmi/system.c
+@@ -13,6 +13,9 @@
+ #include "protocols.h"
+ #include "notify.h"
+ 
++/* Updated only after ALL the mandatory features for that version are merged */
++#define SCMI_PROTOCOL_SUPPORTED_VERSION		0x20000
++
+ #define SCMI_SYSTEM_NUM_SOURCES		1
+ 
+ enum scmi_system_protocol_cmd {
+@@ -144,7 +147,7 @@ static int scmi_system_protocol_init(con
+ 	if (PROTOCOL_REV_MAJOR(pinfo->version) >= 0x2)
+ 		pinfo->graceful_timeout_supported = true;
+ 
+-	return ph->set_priv(ph, pinfo);
++	return ph->set_priv(ph, pinfo, version);
+ }
+ 
+ static const struct scmi_protocol scmi_system = {
+@@ -153,6 +156,7 @@ static const struct scmi_protocol scmi_s
+ 	.instance_init = &scmi_system_protocol_init,
+ 	.ops = NULL,
+ 	.events = &system_protocol_events,
++	.supported_version = SCMI_PROTOCOL_SUPPORTED_VERSION,
+ };
+ 
+ DEFINE_SCMI_PROTOCOL_REGISTER_UNREGISTER(system, scmi_system)
+--- a/drivers/firmware/arm_scmi/voltage.c
++++ b/drivers/firmware/arm_scmi/voltage.c
+@@ -10,6 +10,9 @@
+ 
+ #include "protocols.h"
+ 
++/* Updated only after ALL the mandatory features for that version are merged */
++#define SCMI_PROTOCOL_SUPPORTED_VERSION		0x20000
++
+ #define VOLTAGE_DOMS_NUM_MASK		GENMASK(15, 0)
+ #define REMAINING_LEVELS_MASK		GENMASK(31, 16)
+ #define RETURNED_LEVELS_MASK		GENMASK(11, 0)
+@@ -432,7 +435,7 @@ static int scmi_voltage_protocol_init(co
+ 		dev_warn(ph->dev, "No Voltage domains found.\n");
+ 	}
+ 
+-	return ph->set_priv(ph, vinfo);
++	return ph->set_priv(ph, vinfo, version);
+ }
+ 
+ static const struct scmi_protocol scmi_voltage = {
+@@ -440,6 +443,7 @@ static const struct scmi_protocol scmi_v
+ 	.owner = THIS_MODULE,
+ 	.instance_init = &scmi_voltage_protocol_init,
+ 	.ops = &voltage_proto_ops,
++	.supported_version = SCMI_PROTOCOL_SUPPORTED_VERSION,
+ };
+ 
+ DEFINE_SCMI_PROTOCOL_REGISTER_UNREGISTER(voltage, scmi_voltage)

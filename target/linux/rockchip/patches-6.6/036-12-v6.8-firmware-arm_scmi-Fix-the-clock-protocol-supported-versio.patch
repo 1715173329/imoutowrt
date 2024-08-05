@@ -1,0 +1,27 @@
+From 6bd1b3fede83d8ba5314886062a9bfdada5102a9 Mon Sep 17 00:00:00 2001
+From: Cristian Marussi <cristian.marussi@arm.com>
+Date: Tue, 9 Jan 2024 18:17:16 +0000
+Subject: [PATCH] firmware: arm_scmi: Fix the clock protocol supported version
+
+Rollback currently supported SCMI clock protocol version to v2.0 since
+some of the mandatory v3.0 features are indeed still not supported yet.
+
+Fixes: b5efc28a754d ("firmware: arm_scmi: Add protocol versioning checks")
+Signed-off-by: Cristian Marussi <cristian.marussi@arm.com>
+Link: https://lore.kernel.org/r/20240109181716.2338636-1-cristian.marussi@arm.com
+Signed-off-by: Sudeep Holla <sudeep.holla@arm.com>
+---
+ drivers/firmware/arm_scmi/clock.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/drivers/firmware/arm_scmi/clock.c
++++ b/drivers/firmware/arm_scmi/clock.c
+@@ -13,7 +13,7 @@
+ #include "notify.h"
+ 
+ /* Updated only after ALL the mandatory features for that version are merged */
+-#define SCMI_PROTOCOL_SUPPORTED_VERSION		0x20001
++#define SCMI_PROTOCOL_SUPPORTED_VERSION		0x20000
+ 
+ enum scmi_clock_protocol_cmd {
+ 	CLOCK_ATTRIBUTES = 0x3,

@@ -1,0 +1,80 @@
+From 141b4fa0362569138653cf0165d92d48576db3fa Mon Sep 17 00:00:00 2001
+From: Cristian Marussi <cristian.marussi@arm.com>
+Date: Sat, 26 Aug 2023 13:53:08 +0100
+Subject: [PATCH] firmware: arm_scmi: Add clock OEM config clock operations
+
+Expose a couple of new SCMI clock operations to get and set OEM specific
+clock configurations when talking to an SCMI v3.2 compliant.
+
+Issuing such requests against an SCMI platform server not supporting v3.2
+extension for OEM specific clock configurations will fail.
+
+Signed-off-by: Cristian Marussi <cristian.marussi@arm.com>
+Link: https://lore.kernel.org/r/20230826125308.462328-7-cristian.marussi@arm.com
+Signed-off-by: Sudeep Holla <sudeep.holla@arm.com>
+---
+ drivers/firmware/arm_scmi/clock.c | 22 ++++++++++++++++++++++
+ include/linux/scmi_protocol.h     |  7 +++++++
+ 2 files changed, 29 insertions(+)
+
+--- a/drivers/firmware/arm_scmi/clock.c
++++ b/drivers/firmware/arm_scmi/clock.c
+@@ -594,6 +594,26 @@ static int scmi_clock_state_get(const st
+ 				    enabled, NULL, atomic);
+ }
+ 
++static int scmi_clock_config_oem_set(const struct scmi_protocol_handle *ph,
++				     u32 clk_id, u8 oem_type, u32 oem_val,
++				     bool atomic)
++{
++	struct clock_info *ci = ph->get_priv(ph);
++
++	return ci->clock_config_set(ph, clk_id, CLK_STATE_UNCHANGED,
++				    oem_type, oem_val, atomic);
++}
++
++static int scmi_clock_config_oem_get(const struct scmi_protocol_handle *ph,
++				     u32 clk_id, u8 oem_type, u32 *oem_val,
++				     u32 *attributes, bool atomic)
++{
++	struct clock_info *ci = ph->get_priv(ph);
++
++	return ci->clock_config_get(ph, clk_id, oem_type, attributes,
++				    NULL, oem_val, atomic);
++}
++
+ static int scmi_clock_count_get(const struct scmi_protocol_handle *ph)
+ {
+ 	struct clock_info *ci = ph->get_priv(ph);
+@@ -625,6 +645,8 @@ static const struct scmi_clk_proto_ops c
+ 	.enable = scmi_clock_enable,
+ 	.disable = scmi_clock_disable,
+ 	.state_get = scmi_clock_state_get,
++	.config_oem_get = scmi_clock_config_oem_get,
++	.config_oem_set = scmi_clock_config_oem_set,
+ };
+ 
+ static int scmi_clk_rate_notify(const struct scmi_protocol_handle *ph,
+--- a/include/linux/scmi_protocol.h
++++ b/include/linux/scmi_protocol.h
+@@ -81,6 +81,8 @@ struct scmi_protocol_handle;
+  * @enable: enables the specified clock
+  * @disable: disables the specified clock
+  * @state_get: get the status of the specified clock
++ * @config_oem_get: get the value of an OEM specific clock config
++ * @config_oem_set: set the value of an OEM specific clock config
+  */
+ struct scmi_clk_proto_ops {
+ 	int (*count_get)(const struct scmi_protocol_handle *ph);
+@@ -97,6 +99,11 @@ struct scmi_clk_proto_ops {
+ 		       bool atomic);
+ 	int (*state_get)(const struct scmi_protocol_handle *ph, u32 clk_id,
+ 			 bool *enabled, bool atomic);
++	int (*config_oem_get)(const struct scmi_protocol_handle *ph, u32 clk_id,
++			      u8 oem_type, u32 *oem_val, u32 *attributes,
++			      bool atomic);
++	int (*config_oem_set)(const struct scmi_protocol_handle *ph, u32 clk_id,
++			      u8 oem_type, u32 oem_val, bool atomic);
+ };
+ 
+ struct scmi_perf_domain_info {

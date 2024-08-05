@@ -1,0 +1,139 @@
+From 03a95cf233b5bdd65ddd4eca63cd4874b6b84d50 Mon Sep 17 00:00:00 2001
+From: Cristian Marussi <cristian.marussi@arm.com>
+Date: Sat, 26 Aug 2023 13:53:03 +0100
+Subject: [PATCH] firmware: arm_scmi: Simplify enable/disable clock operations
+
+SCMI clock enable/disable operations come in 2 different flavours which
+simply just differ in how the underlying SCMI transactions is carried on:
+atomic or not.
+
+Currently we expose such SCMI operations through 2 distinctly named
+wrappers, that, in turn, are wrapped into another couple of similarly and
+distinctly named callbacks inside SCMI clock driver user.
+
+Reduce the churn of duplicated wrappers by adding a param to SCMI clock
+enable/disable operations to ask for atomic operation while removing the
+_atomic version of such operations.
+
+No functional change.
+
+CC: Michael Turquette <mturquette@baylibre.com>
+CC: Stephen Boyd <sboyd@kernel.org>
+CC: linux-clk@vger.kernel.org
+Signed-off-by: Cristian Marussi <cristian.marussi@arm.com>
+Acked-by: Stephen Boyd <sboyd@kernel.org>
+Link: https://lore.kernel.org/r/20230826125308.462328-2-cristian.marussi@arm.com
+Signed-off-by: Sudeep Holla <sudeep.holla@arm.com>
+---
+ drivers/clk/clk-scmi.c            | 11 +++++++----
+ drivers/firmware/arm_scmi/clock.c | 24 ++++++------------------
+ include/linux/scmi_protocol.h     |  9 ++++-----
+ 3 files changed, 17 insertions(+), 27 deletions(-)
+
+--- a/drivers/clk/clk-scmi.c
++++ b/drivers/clk/clk-scmi.c
+@@ -13,6 +13,9 @@
+ #include <linux/scmi_protocol.h>
+ #include <asm/div64.h>
+ 
++#define NOT_ATOMIC	false
++#define ATOMIC		true
++
+ static const struct scmi_clk_proto_ops *scmi_proto_clk_ops;
+ 
+ struct scmi_clk {
+@@ -78,28 +81,28 @@ static int scmi_clk_enable(struct clk_hw
+ {
+ 	struct scmi_clk *clk = to_scmi_clk(hw);
+ 
+-	return scmi_proto_clk_ops->enable(clk->ph, clk->id);
++	return scmi_proto_clk_ops->enable(clk->ph, clk->id, NOT_ATOMIC);
+ }
+ 
+ static void scmi_clk_disable(struct clk_hw *hw)
+ {
+ 	struct scmi_clk *clk = to_scmi_clk(hw);
+ 
+-	scmi_proto_clk_ops->disable(clk->ph, clk->id);
++	scmi_proto_clk_ops->disable(clk->ph, clk->id, NOT_ATOMIC);
+ }
+ 
+ static int scmi_clk_atomic_enable(struct clk_hw *hw)
+ {
+ 	struct scmi_clk *clk = to_scmi_clk(hw);
+ 
+-	return scmi_proto_clk_ops->enable_atomic(clk->ph, clk->id);
++	return scmi_proto_clk_ops->enable(clk->ph, clk->id, ATOMIC);
+ }
+ 
+ static void scmi_clk_atomic_disable(struct clk_hw *hw)
+ {
+ 	struct scmi_clk *clk = to_scmi_clk(hw);
+ 
+-	scmi_proto_clk_ops->disable_atomic(clk->ph, clk->id);
++	scmi_proto_clk_ops->disable(clk->ph, clk->id, ATOMIC);
+ }
+ 
+ /*
+--- a/drivers/firmware/arm_scmi/clock.c
++++ b/drivers/firmware/arm_scmi/clock.c
+@@ -418,26 +418,16 @@ scmi_clock_config_set(const struct scmi_
+ 	return ret;
+ }
+ 
+-static int scmi_clock_enable(const struct scmi_protocol_handle *ph, u32 clk_id)
++static int scmi_clock_enable(const struct scmi_protocol_handle *ph, u32 clk_id,
++			     bool atomic)
+ {
+-	return scmi_clock_config_set(ph, clk_id, CLOCK_ENABLE, false);
++	return scmi_clock_config_set(ph, clk_id, CLOCK_ENABLE, atomic);
+ }
+ 
+-static int scmi_clock_disable(const struct scmi_protocol_handle *ph, u32 clk_id)
++static int scmi_clock_disable(const struct scmi_protocol_handle *ph, u32 clk_id,
++			      bool atomic)
+ {
+-	return scmi_clock_config_set(ph, clk_id, 0, false);
+-}
+-
+-static int scmi_clock_enable_atomic(const struct scmi_protocol_handle *ph,
+-				    u32 clk_id)
+-{
+-	return scmi_clock_config_set(ph, clk_id, CLOCK_ENABLE, true);
+-}
+-
+-static int scmi_clock_disable_atomic(const struct scmi_protocol_handle *ph,
+-				     u32 clk_id)
+-{
+-	return scmi_clock_config_set(ph, clk_id, 0, true);
++	return scmi_clock_config_set(ph, clk_id, 0, atomic);
+ }
+ 
+ static int scmi_clock_count_get(const struct scmi_protocol_handle *ph)
+@@ -470,8 +460,6 @@ static const struct scmi_clk_proto_ops c
+ 	.rate_set = scmi_clock_rate_set,
+ 	.enable = scmi_clock_enable,
+ 	.disable = scmi_clock_disable,
+-	.enable_atomic = scmi_clock_enable_atomic,
+-	.disable_atomic = scmi_clock_disable_atomic,
+ };
+ 
+ static int scmi_clk_rate_notify(const struct scmi_protocol_handle *ph,
+--- a/include/linux/scmi_protocol.h
++++ b/include/linux/scmi_protocol.h
+@@ -90,11 +90,10 @@ struct scmi_clk_proto_ops {
+ 			u64 *rate);
+ 	int (*rate_set)(const struct scmi_protocol_handle *ph, u32 clk_id,
+ 			u64 rate);
+-	int (*enable)(const struct scmi_protocol_handle *ph, u32 clk_id);
+-	int (*disable)(const struct scmi_protocol_handle *ph, u32 clk_id);
+-	int (*enable_atomic)(const struct scmi_protocol_handle *ph, u32 clk_id);
+-	int (*disable_atomic)(const struct scmi_protocol_handle *ph,
+-			      u32 clk_id);
++	int (*enable)(const struct scmi_protocol_handle *ph, u32 clk_id,
++		      bool atomic);
++	int (*disable)(const struct scmi_protocol_handle *ph, u32 clk_id,
++		       bool atomic);
+ };
+ 
+ struct scmi_perf_domain_info {
