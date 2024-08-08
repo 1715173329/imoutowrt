@@ -1,0 +1,32 @@
+From dfbcc1cd127c78fc61bb870d36d2512b571d223b Mon Sep 17 00:00:00 2001
+From: Jo-Philipp Wich <jo@mein.io>
+Date: Mon, 3 Jun 2024 16:49:40 +0200
+Subject: [PATCH] fw4: skip not existing netdev names in flowtable device list
+
+In case interface configurations are present which refer to not existing
+network devices, such device names might end up in the flowtable list,
+leading to `No such file or directory` errors when attempting to load
+the resulting ruleset.
+
+Solve this issue by testing for each netdev name whether it refers to
+an existing device.
+
+Fixes: e009588 ("fw4: do not add physical devices for soft offload")
+Signed-off-by: Jo-Philipp Wich <jo@mein.io>
+---
+ root/usr/share/ucode/fw4.uc | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/root/usr/share/ucode/fw4.uc
++++ b/root/usr/share/ucode/fw4.uc
+@@ -568,7 +568,9 @@ return {
+ 			devices = [];
+ 
+ 			for (let zone in this.zones())
+-				push(devices, ...zone.related_physdevs);
++				for (let device in zone.related_physdevs)
++					if (fs.access(`/sys/class/net/${device}`))
++						push(devices, device);
+ 
+ 			devices = sort(uniq(devices));
+ 		}

@@ -35,9 +35,9 @@ Renew: ZiMing Mo <msylgj@immortalwrt.org>
  	option name		lan
 --- a/root/usr/share/firewall4/templates/ruleset.uc
 +++ b/root/usr/share/firewall4/templates/ruleset.uc
-@@ -327,6 +327,12 @@ table inet fw4 {
+@@ -320,6 +320,12 @@ table inet fw4 {
  {%   for (let redirect in fw4.redirects(`dstnat_${zone.name}`)): %}
- 		{%+ include("redirect.uc", { fw4, zone, redirect }) %}
+ 		{%+ include("redirect.uc", { fw4, redirect }) %}
  {%   endfor %}
 +{%   if (zone.masq && fw4.default_option("fullcone")): %}
 +		{%+ include("zone-fullcone.uc", { fw4, zone, family: 4, direction: "dstnat" }) %}
@@ -48,9 +48,9 @@ Renew: ZiMing Mo <msylgj@immortalwrt.org>
  {%   fw4.includes('chain-append', `dstnat_${zone.name}`) %}
  	}
  
-@@ -337,20 +343,26 @@ table inet fw4 {
+@@ -330,20 +336,26 @@ table inet fw4 {
  {%   for (let redirect in fw4.redirects(`srcnat_${zone.name}`)): %}
- 		{%+ include("redirect.uc", { fw4, zone, redirect }) %}
+ 		{%+ include("redirect.uc", { fw4, redirect }) %}
  {%   endfor %}
 -{%   if (zone.masq): %}
 +{%   if (zone.masq && !fw4.default_option("fullcone")): %}
@@ -167,7 +167,7 @@ Renew: ZiMing Mo <msylgj@immortalwrt.org>
  			"accept",
  			"reject",
  			"drop"
-@@ -1923,6 +1972,8 @@ return {
+@@ -1919,6 +1968,8 @@ return {
  		}
  
  		let defs = this.parse_options(data, {
@@ -176,7 +176,7 @@ Renew: ZiMing Mo <msylgj@immortalwrt.org>
  			input: [ "policy", "drop" ],
  			output: [ "policy", "drop" ],
  			forward: [ "policy", "drop" ],
-@@ -1957,6 +2008,11 @@ return {
+@@ -1953,6 +2004,11 @@ return {
  
  		delete defs.syn_flood;
  
@@ -188,7 +188,7 @@ Renew: ZiMing Mo <msylgj@immortalwrt.org>
  		this.state.defaults = defs;
  	},
  
-@@ -2182,10 +2238,23 @@ return {
+@@ -2178,10 +2234,23 @@ return {
  		zone.related_subnets = related_subnets;
  		zone.related_physdevs = related_physdevs;
  

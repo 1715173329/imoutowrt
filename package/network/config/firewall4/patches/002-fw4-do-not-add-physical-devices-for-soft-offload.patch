@@ -1,0 +1,81 @@
+From e00958884416f59b273595f941d198de63acc1dd Mon Sep 17 00:00:00 2001
+From: Jo-Philipp Wich <jo@mein.io>
+Date: Fri, 15 Mar 2024 10:49:33 +0200
+Subject: [PATCH] fw4: do not add physical devices for soft offload
+
+Let kernel heuristics take care of offloading decapsulation.
+
+When software flow offloading is requested, avoid manually resolving and
+adding lower physical devices to the flow table in order to let kernel
+heuristics deal with the proper offloading en/decapsulation.
+
+Fixes: https://github.com/openwrt/openwrt/issues/13410
+Ref: https://github.com/openwrt/openwrt/issues/10224
+Submitted-by: Andris PE <neandris@gmail.com>
+[refactor code, reword commit message]
+Signed-off-by: Jo-Philipp Wich <jo@mein.io>
+---
+ root/usr/share/ucode/fw4.uc | 39 ++++++++++++++++++++++++++++---------
+ 1 file changed, 30 insertions(+), 9 deletions(-)
+
+--- a/root/usr/share/ucode/fw4.uc
++++ b/root/usr/share/ucode/fw4.uc
+@@ -526,12 +526,12 @@ return {
+ 		return v;
+ 	},
+ 
+-	resolve_offload_devices: function() {
+-		if (!this.default_option("flow_offloading"))
+-			return [];
++	resolve_hw_offload_devices: function() {
++		if (!this.default_option("flow_offloading_hw"))
++			return null;
+ 
+ 		let devstatus = null;
+-		let devices = [];
++		let devices = null;
+ 		let bus = ubus.connect();
+ 
+ 		if (bus) {
+@@ -541,15 +541,36 @@ return {
+ 
+ 		for (let zone in this.zones())
+ 			for (let device in zone.related_physdevs)
+-				push(devices, ...resolve_lower_devices(devstatus, device));
+-		devices = sort(uniq(devices));
++				push(devices ||= [], ...resolve_lower_devices(devstatus, device));
++
++		if (!devices)
++			return null;
+ 
+-		if (this.default_option("flow_offloading_hw")) {
+-			if (length(devices) && nft_try_hw_offload(devices))
+-				return devices;
++		devices = sort(uniq(devices));
+ 
++		if (!nft_try_hw_offload(devices)) {
+ 			this.warn('Hardware flow offloading unavailable, falling back to software offloading');
+ 			this.state.defaults.flow_offloading_hw = false;
++
++			return null;
++		}
++
++		return devices;
++	},
++
++	resolve_offload_devices: function() {
++		if (!this.default_option("flow_offloading"))
++			return [];
++
++		let devices = this.resolve_hw_offload_devices();
++
++		if (!devices) {
++			devices = [];
++
++			for (let zone in this.zones())
++				push(devices, ...zone.related_physdevs);
++
++			devices = sort(uniq(devices));
+ 		}
+ 
+ 		return devices;
