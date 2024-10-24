@@ -207,6 +207,17 @@ define Device/huake_guangmiao-g4c
 endef
 TARGET_DEVICES += huake_guangmiao-g4c
 
+define Device/itreechain_a2402
+  DEVICE_VENDOR := iTreeChain
+  DEVICE_MODEL := A2402
+  SOC := rk3568
+  DEVICE_DTS := rockchip/rk3568-itreechain-a2402
+  UBOOT_DEVICE_NAME := itreechain-a2402-rk3568
+  BOOT_FLOW := pine64-img
+  DEVICE_PACKAGES := kmod-r8125 kmod-ata-ahci-dwc
+endef
+TARGET_DEVICES += itreechain_a2402
+
 define Device/lunzn_fastrhino-r66s
   DEVICE_VENDOR := Lunzn
   DEVICE_MODEL := FastRhino R66S
