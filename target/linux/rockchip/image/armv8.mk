@@ -389,6 +389,16 @@ define Device/radxa_zero-3w
 endef
 TARGET_DEVICES += radxa_zero-3w
 
+define Device/scensmart_sv901-eaio
+  DEVICE_VENDOR := ScenSmart
+  DEVICE_MODEL := SV901 EAIO
+  SOC := rk3399
+  BOOT_FLOW := pine64-bin
+  DEVICE_PACKAGES := kmod-switch-rtl8367b swconfig kmod-brcmfmac wpad-openssl \
+	brcmfmac-firmware-4356-sdio brcmfmac-nvram-4356-sdio
+endef
+TARGET_DEVICES += scensmart_sv901-eaio
+
 define Device/sinovoip_bpi-r2-pro
   DEVICE_VENDOR := Bananapi
   DEVICE_MODEL := BPi-R2 Pro

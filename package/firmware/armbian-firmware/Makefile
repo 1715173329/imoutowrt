@@ -97,6 +97,9 @@ define Package/brcmfmac-nvram-4356-sdio/install
 	$(LN) \
 		brcmfmac4356-sdio.AP6356S.txt \
 		$(1)/lib/firmware/brcm/brcmfmac4356-sdio.friendlyarm,nanopc-t4.txt
+	$(LN) \
+		brcmfmac4356-sdio.txt \
+		$(1)/lib/firmware/brcm/brcmfmac4356-sdio.scensmart,sv901-eaio.txt
 endef
 $(eval $(call BuildPackage,brcmfmac-nvram-4356-sdio))
 

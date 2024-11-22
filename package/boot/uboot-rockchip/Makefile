@@ -160,6 +160,13 @@ define U-Boot/rockpro64-rk3399
     pine64_rockpro64
 endef
 
+define U-Boot/sv901-eaio-rk3399
+  $(U-Boot/rk3399/Default)
+  NAME:=SV901 EAIO
+  BUILD_DEVICES:= \
+    scensmart_sv901-eaio
+endef
+
 
 # RK3566 boards
 
@@ -385,6 +392,7 @@ UBOOT_TARGETS := \
   rock-pi-4-rk3399 \
   rockpro64-rk3399 \
   rock-pi-s-rk3308 \
+  sv901-eaio-rk3399 \
   nanopi-r2c-rk3328 \
   nanopi-r2c-plus-rk3328 \
   nanopi-r2s-rk3328 \

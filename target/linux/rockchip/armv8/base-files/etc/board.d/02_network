@@ -50,6 +50,10 @@ rockchip_setup_interfaces()
 	lyt,t68m)
 		ucidef_set_interfaces_lan_wan 'lan2 lan3 lan4' 'lan1'
 		;;
+	scensmart,sv901-eaio)
+		ucidef_add_switch "switch0" \
+			"0:lan" "1:lan" "3:lan" "4:wan" "5:wan" "7t@eth0"
+		;;
 	sinovoip,rk3568-bpi-r2pro)
 		ucidef_set_interfaces_lan_wan 'lan0 lan1 lan2 lan3' 'eth0'
 		;;
@@ -75,7 +79,8 @@ rockchip_setup_macs()
 	friendlyarm,nanopi-r2c|\
 	friendlyarm,nanopi-r2s|\
 	lunzn,fastrhino-r66s|\
-	lunzn,fastrhino-r68s)
+	lunzn,fastrhino-r68s|\
+	scensmart,sv901-eaio)
 		wan_mac=$(macaddr_generate_from_mmc_cid mmcblk0)
 		lan_mac=$(macaddr_add "$wan_mac" 1)
 		;;

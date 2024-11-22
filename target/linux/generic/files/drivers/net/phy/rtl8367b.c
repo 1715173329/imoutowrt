@@ -1499,6 +1499,7 @@ static int rtl8367b_detect(struct rtl8366_smi *smi)
 	}
 
 	switch (chip_ver) {
+	case 0x0000:
 	case 0x0010:
 		if (chip_num == 0x6642) {
 			chip_name = "8367S-VB";
