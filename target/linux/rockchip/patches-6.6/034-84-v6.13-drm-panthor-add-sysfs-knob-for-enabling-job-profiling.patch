@@ -1,0 +1,145 @@
+From 6a797bdfde77041a0a9711082d7919162d1d7061 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Adri=C3=A1n=20Larumbe?= <adrian.larumbe@collabora.com>
+Date: Tue, 24 Sep 2024 00:06:25 +0100
+Subject: [PATCH] drm/panthor: add sysfs knob for enabling job profiling
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This commit introduces a DRM device sysfs attribute that lets UM control
+the job accounting status in the device. The knob variable had been brought
+in as part of a previous commit, but now we're able to fix it manually.
+
+As sysfs files are part of a driver's uAPI, describe its legitimate input
+values and output format in a documentation file.
+
+Signed-off-by: Adrián Larumbe <adrian.larumbe@collabora.com>
+Reviewed-by: Steven Price <steven.price@arm.com>
+Reviewed-by: Boris Brezillon <boris.brezillon@collabora.com>
+Signed-off-by: Boris Brezillon <boris.brezillon@collabora.com>
+Link: https://patchwork.freedesktop.org/patch/msgid/20240923230912.2207320-6-adrian.larumbe@collabora.com
+---
+ .../testing/sysfs-driver-panthor-profiling    | 10 ++++
+ Documentation/gpu/panthor.rst                 | 46 +++++++++++++++++++
+ drivers/gpu/drm/panthor/panthor_drv.c         | 39 ++++++++++++++++
+ 3 files changed, 95 insertions(+)
+ create mode 100644 Documentation/ABI/testing/sysfs-driver-panthor-profiling
+ create mode 100644 Documentation/gpu/panthor.rst
+
+--- /dev/null
++++ b/Documentation/ABI/testing/sysfs-driver-panthor-profiling
+@@ -0,0 +1,10 @@
++What:		/sys/bus/platform/drivers/panthor/.../profiling
++Date:		September 2024
++KernelVersion:	6.11.0
++Contact:	Adrian Larumbe <adrian.larumbe@collabora.com>
++Description:
++		Bitmask to enable drm fdinfo's job profiling measurements.
++		Valid values are:
++		0: Don't enable fdinfo job profiling sources.
++		1: Enable GPU cycle measurements for running jobs.
++		2: Enable GPU timestamp sampling for running jobs.
+--- /dev/null
++++ b/Documentation/gpu/panthor.rst
+@@ -0,0 +1,46 @@
++.. SPDX-License-Identifier: GPL-2.0+
++
++=========================
++ drm/Panthor CSF driver
++=========================
++
++.. _panfrost-usage-stats:
++
++Panthor DRM client usage stats implementation
++==============================================
++
++The drm/Panthor driver implements the DRM client usage stats specification as
++documented in :ref:`drm-client-usage-stats`.
++
++Example of the output showing the implemented key value pairs and entirety of
++the currently possible format options:
++
++::
++     pos:    0
++     flags:  02400002
++     mnt_id: 29
++     ino:    491
++     drm-driver:     panthor
++     drm-client-id:  10
++     drm-engine-panthor:     111110952750 ns
++     drm-cycles-panthor:     94439687187
++     drm-maxfreq-panthor:    1000000000 Hz
++     drm-curfreq-panthor:    1000000000 Hz
++     drm-total-memory:       16480 KiB
++     drm-shared-memory:      0
++     drm-active-memory:      16200 KiB
++     drm-resident-memory:    16480 KiB
++     drm-purgeable-memory:   0
++
++Possible `drm-engine-` key names are: `panthor`.
++`drm-curfreq-` values convey the current operating frequency for that engine.
++
++Users must bear in mind that engine and cycle sampling are disabled by default,
++because of power saving concerns. `fdinfo` users and benchmark applications which
++query the fdinfo file must make sure to toggle the job profiling status of the
++driver by writing into the appropriate sysfs node::
++
++    echo <N> > /sys/bus/platform/drivers/panthor/[a-f0-9]*.gpu/profiling
++
++Where `N` is a bit mask where cycle and timestamp sampling are respectively
++enabled by the first and second bits.
+--- a/drivers/gpu/drm/panthor/panthor_drv.c
++++ b/drivers/gpu/drm/panthor/panthor_drv.c
+@@ -1471,6 +1471,44 @@ static void panthor_remove(struct platfo
+ 	panthor_device_unplug(ptdev);
+ }
+ 
++static ssize_t profiling_show(struct device *dev,
++			      struct device_attribute *attr,
++			      char *buf)
++{
++	struct panthor_device *ptdev = dev_get_drvdata(dev);
++
++	return sysfs_emit(buf, "%d\n", ptdev->profile_mask);
++}
++
++static ssize_t profiling_store(struct device *dev,
++			       struct device_attribute *attr,
++			       const char *buf, size_t len)
++{
++	struct panthor_device *ptdev = dev_get_drvdata(dev);
++	u32 value;
++	int err;
++
++	err = kstrtou32(buf, 0, &value);
++	if (err)
++		return err;
++
++	if ((value & ~PANTHOR_DEVICE_PROFILING_ALL) != 0)
++		return -EINVAL;
++
++	ptdev->profile_mask = value;
++
++	return len;
++}
++
++static DEVICE_ATTR_RW(profiling);
++
++static struct attribute *panthor_attrs[] = {
++	&dev_attr_profiling.attr,
++	NULL,
++};
++
++ATTRIBUTE_GROUPS(panthor);
++
+ static const struct of_device_id dt_match[] = {
+ 	{ .compatible = "rockchip,rk3588-mali" },
+ 	{ .compatible = "arm,mali-valhall-csf" },
+@@ -1490,6 +1528,7 @@ static struct platform_driver panthor_dr
+ 		.name = "panthor",
+ 		.pm = pm_ptr(&panthor_pm_ops),
+ 		.of_match_table = dt_match,
++		.dev_groups = panthor_groups,
+ 	},
+ };
+ 
