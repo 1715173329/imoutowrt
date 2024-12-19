@@ -1,0 +1,105 @@
+From: Sebastian Reichel <sebastian.reichel@collabora.com>
+To: Rob Herring <robh@kernel.org>,
+	Krzysztof Kozlowski <krzk+dt@kernel.org>,
+	Conor Dooley <conor+dt@kernel.org>,
+	Heiko Stuebner <heiko@sntech.de>,
+	Ulf Hansson <ulf.hansson@linaro.org>,
+	Mark Brown <broonie@kernel.org>
+Cc: "Liam Girdwood" <lgirdwood@gmail.com>,
+	"Elaine Zhang" <zhangqing@rock-chips.com>,
+	"Adrián Martínez Larumbe" <adrian.larumbe@collabora.com>,
+	"Boris Brezillon" <boris.brezillon@collabora.com>,
+	"Chen-Yu Tsai" <wens@csie.org>,
+	devicetree@vger.kernel.org, linux-rockchip@lists.infradead.org,
+	linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org,
+	"Sebastian Reichel" <sebastian.reichel@collabora.com>,
+	kernel@collabora.com
+Subject: [PATCH v5 4/7] pmdomain: rockchip: reduce indentation in rockchip_pd_power
+Date: Wed, 11 Dec 2024 15:26:49 +0100	[thread overview]
+Message-ID: <20241211143044.9550-5-sebastian.reichel@collabora.com> (raw)
+In-Reply-To: <20241211143044.9550-1-sebastian.reichel@collabora.com>
+
+Rework the logic, so that the function exits early when the
+power domain state is already correct to reduce code indentation.
+
+No functional change intended.
+
+Reviewed-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Adrian Larumbe <adrian.larumbe@collabora.com> # On Rock 5B
+Signed-off-by: Sebastian Reichel <sebastian.reichel@collabora.com>
+---
+ drivers/pmdomain/rockchip/pm-domains.c | 49 +++++++++++++-------------
+ 1 file changed, 25 insertions(+), 24 deletions(-)
+
+--- a/drivers/pmdomain/rockchip/pm-domains.c
++++ b/drivers/pmdomain/rockchip/pm-domains.c
+@@ -557,39 +557,40 @@ static int rockchip_pd_power(struct rock
+ 
+ 	guard(mutex)(&pmu->mutex);
+ 
+-	if (rockchip_pmu_domain_is_on(pd) != power_on) {
+-		ret = clk_bulk_enable(pd->num_clks, pd->clks);
+-		if (ret < 0) {
+-			dev_err(pmu->dev, "failed to enable clocks\n");
+-			return ret;
+-		}
+-
+-		rockchip_pmu_ungate_clk(pd, true);
+-
+-		if (!power_on) {
+-			rockchip_pmu_save_qos(pd);
+-
+-			/* if powering down, idle request to NIU first */
+-			rockchip_pmu_set_idle_request(pd, true);
+-		}
+-
+-		ret = rockchip_do_pmu_set_power_domain(pd, power_on);
+-		if (ret < 0) {
+-			clk_bulk_disable(pd->num_clks, pd->clks);
+-			return ret;
+-		}
+-
+-		if (power_on) {
+-			/* if powering up, leave idle mode */
+-			rockchip_pmu_set_idle_request(pd, false);
++	if (rockchip_pmu_domain_is_on(pd) == power_on)
++		return 0;
+ 
+-			rockchip_pmu_restore_qos(pd);
+-		}
++	ret = clk_bulk_enable(pd->num_clks, pd->clks);
++	if (ret < 0) {
++		dev_err(pmu->dev, "failed to enable clocks\n");
++		return ret;
++	}
++
++	rockchip_pmu_ungate_clk(pd, true);
++
++	if (!power_on) {
++		rockchip_pmu_save_qos(pd);
++
++		/* if powering down, idle request to NIU first */
++		rockchip_pmu_set_idle_request(pd, true);
++	}
+ 
+-		rockchip_pmu_ungate_clk(pd, false);
++	ret = rockchip_do_pmu_set_power_domain(pd, power_on);
++	if (ret < 0) {
+ 		clk_bulk_disable(pd->num_clks, pd->clks);
++		return ret;
+ 	}
+ 
++	if (power_on) {
++		/* if powering up, leave idle mode */
++		rockchip_pmu_set_idle_request(pd, false);
++
++		rockchip_pmu_restore_qos(pd);
++	}
++
++	rockchip_pmu_ungate_clk(pd, false);
++	clk_bulk_disable(pd->num_clks, pd->clks);
++
+ 	return 0;
+ }
+ 

@@ -1,0 +1,110 @@
+From: Sebastian Reichel <sebastian.reichel@collabora.com>
+To: Rob Herring <robh@kernel.org>,
+	Krzysztof Kozlowski <krzk+dt@kernel.org>,
+	Conor Dooley <conor+dt@kernel.org>,
+	Heiko Stuebner <heiko@sntech.de>,
+	Ulf Hansson <ulf.hansson@linaro.org>,
+	Mark Brown <broonie@kernel.org>
+Cc: "Liam Girdwood" <lgirdwood@gmail.com>,
+	"Elaine Zhang" <zhangqing@rock-chips.com>,
+	"Adrián Martínez Larumbe" <adrian.larumbe@collabora.com>,
+	"Boris Brezillon" <boris.brezillon@collabora.com>,
+	"Chen-Yu Tsai" <wens@csie.org>,
+	devicetree@vger.kernel.org, linux-rockchip@lists.infradead.org,
+	linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org,
+	"Sebastian Reichel" <sebastian.reichel@collabora.com>,
+	kernel@collabora.com
+Subject: [PATCH v5 1/7] regulator: Add (devm_)of_regulator_get()
+Date: Wed, 11 Dec 2024 15:26:46 +0100	[thread overview]
+Message-ID: <20241211143044.9550-2-sebastian.reichel@collabora.com> (raw)
+In-Reply-To: <20241211143044.9550-1-sebastian.reichel@collabora.com>
+
+The Rockchip power-domain controller also plans to make use of
+per-domain regulators similar to the MediaTek power-domain controller.
+Since existing DTs are missing the regulator information, the kernel
+should fallback to the automatically created dummy regulator if
+necessary. Thus the version without the _optional suffix is needed.
+
+The Rockchip driver plans to use the managed version, but to be
+consistent with existing code the unmanaged version is added at the
+same time.
+
+Tested-by: Heiko Stuebner <heiko@sntech.de>
+Signed-off-by: Sebastian Reichel <sebastian.reichel@collabora.com>
+---
+ drivers/regulator/devres.c         | 17 +++++++++++++++++
+ drivers/regulator/of_regulator.c   | 21 +++++++++++++++++++++
+ include/linux/regulator/consumer.h |  6 ++++++
+ 3 files changed, 44 insertions(+)
+
+--- a/drivers/regulator/devres.c
++++ b/drivers/regulator/devres.c
+@@ -713,6 +713,23 @@ static struct regulator *_devm_of_regula
+ }
+ 
+ /**
++ * devm_of_regulator_get - Resource managed of_regulator_get()
++ * @dev: device used for dev_printk() messages and resource lifetime management
++ * @node: device node for regulator "consumer"
++ * @id:  supply name or regulator ID.
++ *
++ * Managed of_regulator_get(). Regulators returned from this
++ * function are automatically regulator_put() on driver detach. See
++ * of_regulator_get() for more information.
++ */
++struct regulator *devm_of_regulator_get(struct device *dev, struct device_node *node,
++						 const char *id)
++{
++	return _devm_of_regulator_get(dev, node, id, NORMAL_GET);
++}
++EXPORT_SYMBOL_GPL(devm_of_regulator_get);
++
++/**
+  * devm_of_regulator_get_optional - Resource managed of_regulator_get_optional()
+  * @dev: device used for dev_printk() messages and resource lifetime management
+  * @node: device node for regulator "consumer"
+--- a/drivers/regulator/of_regulator.c
++++ b/drivers/regulator/of_regulator.c
+@@ -676,6 +676,27 @@ struct regulator *_of_regulator_get(stru
+ }
+ 
+ /**
++ * of_regulator_get - get regulator via device tree lookup
++ * @dev: device used for dev_printk() messages
++ * @node: device node for regulator "consumer"
++ * @id: Supply name
++ *
++ * Return: pointer to struct regulator corresponding to the regulator producer,
++ *	   or PTR_ERR() encoded error number.
++ *
++ * This is intended for use by consumers that want to get a regulator
++ * supply directly from a device node. This will _not_ consider supply
++ * aliases. See regulator_dev_lookup().
++ */
++struct regulator *of_regulator_get(struct device *dev,
++					    struct device_node *node,
++					    const char *id)
++{
++	return _of_regulator_get(dev, node, id, NORMAL_GET);
++}
++EXPORT_SYMBOL_GPL(of_regulator_get);
++
++/**
+  * of_regulator_get_optional - get optional regulator via device tree lookup
+  * @dev: device used for dev_printk() messages
+  * @node: device node for regulator "consumer"
+--- a/include/linux/regulator/consumer.h
++++ b/include/linux/regulator/consumer.h
+@@ -213,6 +213,12 @@ void regulator_put(struct regulator *reg
+ void devm_regulator_put(struct regulator *regulator);
+ 
+ #if IS_ENABLED(CONFIG_OF)
++struct regulator *__must_check of_regulator_get(struct device *dev,
++						struct device_node *node,
++						const char *id);
++struct regulator *__must_check devm_of_regulator_get(struct device *dev,
++						     struct device_node *node,
++						     const char *id);
+ struct regulator *__must_check of_regulator_get_optional(struct device *dev,
+ 							 struct device_node *node,
+ 							 const char *id);

@@ -1,0 +1,43 @@
+From a1d12410d9b1ecff87d39f80b0d1cec895012ffa Mon Sep 17 00:00:00 2001
+From: Wei Fang <wei.fang@nxp.com>
+Date: Wed, 11 Sep 2024 20:03:38 +0800
+Subject: [PATCH] regulator: core: fix the broken behavior of
+ regulator_dev_lookup()
+
+The behavior of regulator_dev_lookup() for non-DT way has been broken
+since the commit b8c325545714 ("regulator: Move OF-specific regulator
+lookup code to of_regulator.c").
+
+Before the commit, of_get_regulator() was used to get the regulator,
+which returns NULL if the regulator is not found. So the regulator
+will be looked up through regulator_lookup_by_name() if no matching
+regulator is found in regulator_map_list.
+
+However, currently, of_regulator_dev_lookup() is used to instead of
+of_get_regulator(), but the variable 'r' is set to ERR_PTR(-ENODEV)
+instead of NULL if the regulator is not found. In this case, if no
+regulator is found in regulator_map_list, the variable 'r' is still
+ERR_PTR(-ENODEV), So regulator_dev_lookup() returns the value of 'r'
+directly instead of continuing to look up the regulator through
+regulator_lookup_by_name().
+
+Fixes: b8c325545714 ("regulator: Move OF-specific regulator lookup code to of_regulator.c")
+Signed-off-by: Wei Fang <wei.fang@nxp.com>
+Link: https://patch.msgid.link/20240911120338.526384-1-wei.fang@nxp.com
+Signed-off-by: Mark Brown <broonie@kernel.org>
+---
+ drivers/regulator/core.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/drivers/regulator/core.c
++++ b/drivers/regulator/core.c
+@@ -1953,6 +1953,9 @@ static struct regulator_dev *regulator_d
+ 			return r;
+ 		if (PTR_ERR(r) == -EPROBE_DEFER)
+ 			return r;
++
++		if (PTR_ERR(r) == -ENODEV)
++			r = NULL;
+ 	}
+ 
+ 	/* if not found, try doing it non-dt way */

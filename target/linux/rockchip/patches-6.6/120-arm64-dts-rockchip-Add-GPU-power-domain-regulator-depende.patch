@@ -1,0 +1,165 @@
+From: Sebastian Reichel <sebastian.reichel@collabora.com>
+To: Rob Herring <robh@kernel.org>,
+	Krzysztof Kozlowski <krzk+dt@kernel.org>,
+	Conor Dooley <conor+dt@kernel.org>,
+	Heiko Stuebner <heiko@sntech.de>,
+	Ulf Hansson <ulf.hansson@linaro.org>,
+	Mark Brown <broonie@kernel.org>
+Cc: "Liam Girdwood" <lgirdwood@gmail.com>,
+	"Elaine Zhang" <zhangqing@rock-chips.com>,
+	"Adrián Martínez Larumbe" <adrian.larumbe@collabora.com>,
+	"Boris Brezillon" <boris.brezillon@collabora.com>,
+	"Chen-Yu Tsai" <wens@csie.org>,
+	devicetree@vger.kernel.org, linux-rockchip@lists.infradead.org,
+	linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org,
+	"Sebastian Reichel" <sebastian.reichel@collabora.com>,
+	kernel@collabora.com
+Subject: [PATCH v5 7/7] arm64: dts: rockchip: Add GPU power domain regulator dependency for RK3588
+Date: Wed, 11 Dec 2024 15:26:52 +0100	[thread overview]
+Message-ID: <20241211143044.9550-8-sebastian.reichel@collabora.com> (raw)
+In-Reply-To: <20241211143044.9550-1-sebastian.reichel@collabora.com>
+
+Enabling the GPU power domain requires that the GPU regulator is
+enabled. The regulator is enabled at boot time, but automatically
+gets disabled when there are no users.
+
+If the GPU driver is not probed at boot time or rebound while
+the system is running the system will try to enable the power
+domain before the regulator is enabled resulting in a failure
+hanging the whole system. Avoid this by adding an explicit
+dependency.
+
+Reported-by: Adrián Martínez Larumbe <adrian.larumbe@collabora.com>
+Tested-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Adrian Larumbe <adrian.larumbe@collabora.com> # On Rock 5B
+Signed-off-by: Sebastian Reichel <sebastian.reichel@collabora.com>
+---
+ arch/arm64/boot/dts/rockchip/rk3588-armsom-sige7.dts          | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi                 | 2 +-
+ arch/arm64/boot/dts/rockchip/rk3588-coolpi-cm5.dtsi           | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-edgeble-neu6a-common.dtsi | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-evb1-v10.dts              | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-fet3588-c.dtsi            | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-friendlyelec-cm3588.dtsi  | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-jaguar.dts                | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi            | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-ok3588-c.dts              | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-orangepi-5-plus.dts       | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-quartzpro64.dts           | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-rock-5-itx.dts            | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts               | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-tiger.dtsi                | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-toybrick-x0.dts           | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588-turing-rk1.dtsi           | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588s-coolpi-4b.dts            | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588s-evb1-v10.dts             | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588s-gameforce-ace.dts        | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588s-indiedroid-nova.dts      | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588s-khadas-edge2.dts         | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588s-odroid-m2.dts            | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts              | 4 ++++
+ arch/arm64/boot/dts/rockchip/rk3588s-rock-5c.dts              | 4 ++++
+ 25 files changed, 97 insertions(+), 1 deletion(-)
+
+--- a/arch/arm64/boot/dts/rockchip/rk3588-armsom-sige7.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588-armsom-sige7.dts
+@@ -309,6 +309,10 @@
+ 	status = "okay";
+ };
+ 
++&pd_gpu {
++	domain-supply = <&vdd_gpu_s0>;
++};
++
+ &pinctrl {
+ 	bt {
+ 		bt_reg_on_h: bt-reg-on-h {
+--- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+@@ -861,7 +861,7 @@
+ 				};
+ 			};
+ 			/* These power domains are grouped by VD_GPU */
+-			power-domain@RK3588_PD_GPU {
++			pd_gpu: power-domain@RK3588_PD_GPU {
+ 				reg = <RK3588_PD_GPU>;
+ 				clocks = <&cru CLK_GPU>,
+ 					 <&cru CLK_GPU_COREGROUP>,
+--- a/arch/arm64/boot/dts/rockchip/rk3588-evb1-v10.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588-evb1-v10.dts
+@@ -162,6 +162,10 @@
+ 	};
+ };
+ 
++&pd_gpu {
++	domain-supply = <&vdd_gpu_s0>;
++};
++
+ &pinctrl {
+ 	rtl8211f {
+ 		rtl8211f_rst: rtl8211f-rst {
+--- a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
+@@ -538,6 +538,10 @@
+ 	status = "okay";
+ };
+ 
++&pd_gpu {
++	domain-supply = <&vdd_gpu_s0>;
++};
++
+ &pinctrl {
+ 	gpio-leds {
+ 		sys_led_pin: sys-led-pin {
+--- a/arch/arm64/boot/dts/rockchip/rk3588-orangepi-5-plus.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588-orangepi-5-plus.dts
+@@ -388,6 +388,10 @@
+ 	status = "okay";
+ };
+ 
++&pd_gpu {
++	domain-supply = <&vdd_gpu_s0>;
++};
++
+ &pinctrl {
+ 	hym8563 {
+ 		hym8563_int: hym8563-int {
+--- a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b.dts
+@@ -341,6 +341,10 @@
+ 	status = "okay";
+ };
+ 
++&pd_gpu {
++	domain-supply = <&vdd_gpu_s0>;
++};
++
+ &pinctrl {
+ 	hym8563 {
+ 		hym8563_int: hym8563-int {
+--- a/arch/arm64/boot/dts/rockchip/rk3588s-indiedroid-nova.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-indiedroid-nova.dts
+@@ -347,6 +347,10 @@
+ 	};
+ };
+ 
++&pd_gpu {
++	domain-supply = <&vdd_gpu_s0>;
++};
++
+ &pinctrl {
+ 	bluetooth-pins {
+ 		bt_reset: bt-reset {
+--- a/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-rock-5a.dts
+@@ -320,6 +320,10 @@
+ 	status = "okay";
+ };
+ 
++&pd_gpu {
++	domain-supply = <&vdd_gpu_s0>;
++};
++
+ &pinctrl {
+ 	leds {
+ 		io_led: io-led {

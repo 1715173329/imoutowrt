@@ -1,0 +1,57 @@
+From: Sebastian Reichel <sebastian.reichel@collabora.com>
+To: Rob Herring <robh@kernel.org>,
+	Krzysztof Kozlowski <krzk+dt@kernel.org>,
+	Conor Dooley <conor+dt@kernel.org>,
+	Heiko Stuebner <heiko@sntech.de>,
+	Ulf Hansson <ulf.hansson@linaro.org>,
+	Mark Brown <broonie@kernel.org>
+Cc: "Liam Girdwood" <lgirdwood@gmail.com>,
+	"Elaine Zhang" <zhangqing@rock-chips.com>,
+	"Adrián Martínez Larumbe" <adrian.larumbe@collabora.com>,
+	"Boris Brezillon" <boris.brezillon@collabora.com>,
+	"Chen-Yu Tsai" <wens@csie.org>,
+	devicetree@vger.kernel.org, linux-rockchip@lists.infradead.org,
+	linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org,
+	"Sebastian Reichel" <sebastian.reichel@collabora.com>,
+	kernel@collabora.com
+Subject: [PATCH v5 2/7] pmdomain: rockchip: cleanup mutex handling in rockchip_pd_power
+Date: Wed, 11 Dec 2024 15:26:47 +0100	[thread overview]
+Message-ID: <20241211143044.9550-3-sebastian.reichel@collabora.com> (raw)
+In-Reply-To: <20241211143044.9550-1-sebastian.reichel@collabora.com>
+
+Use the cleanup infrastructure to handle the mutex, which
+slightly improve code readability for this function.
+
+Reviewed-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Adrian Larumbe <adrian.larumbe@collabora.com> # On Rock 5B
+Signed-off-by: Sebastian Reichel <sebastian.reichel@collabora.com>
+---
+ drivers/pmdomain/rockchip/pm-domains.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+--- a/drivers/pmdomain/rockchip/pm-domains.c
++++ b/drivers/pmdomain/rockchip/pm-domains.c
+@@ -549,13 +549,12 @@ static int rockchip_pd_power(struct rock
+ 	struct rockchip_pmu *pmu = pd->pmu;
+ 	int ret;
+ 
+-	mutex_lock(&pmu->mutex);
++	guard(mutex)(&pmu->mutex);
+ 
+ 	if (rockchip_pmu_domain_is_on(pd) != power_on) {
+ 		ret = clk_bulk_enable(pd->num_clks, pd->clks);
+ 		if (ret < 0) {
+ 			dev_err(pmu->dev, "failed to enable clocks\n");
+-			mutex_unlock(&pmu->mutex);
+ 			return ret;
+ 		}
+ 
+@@ -581,7 +580,6 @@ static int rockchip_pd_power(struct rock
+ 		clk_bulk_disable(pd->num_clks, pd->clks);
+ 	}
+ 
+-	mutex_unlock(&pmu->mutex);
+ 	return 0;
+ }
+ 

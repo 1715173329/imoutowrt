@@ -1,0 +1,114 @@
+From 2a1de5678944147c2a41b6006127d2d0b618e83b Mon Sep 17 00:00:00 2001
+From: Chen-Yu Tsai <wenst@chromium.org>
+Date: Wed, 11 Sep 2024 15:27:41 +0800
+Subject: [PATCH] regulator: Split up _regulator_get()
+
+_regulator_get() contains a lot of common code doing checks prior to the
+regulator lookup and housekeeping work after the lookup. Almost all the
+code could be shared with a OF-specific variant of _regulator_get().
+
+Split out the common parts so that they can be reused. The OF-specific
+version of _regulator_get() will be added in a subsequent patch.
+No functional changes were made.
+
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Link: https://patch.msgid.link/20240911072751.365361-4-wenst@chromium.org
+Signed-off-by: Mark Brown <broonie@kernel.org>
+---
+ drivers/regulator/core.c     | 54 ++++++++++++++++++++++++++++--------
+ drivers/regulator/internal.h |  4 +++
+ 2 files changed, 47 insertions(+), 11 deletions(-)
+
+--- a/drivers/regulator/core.c
++++ b/drivers/regulator/core.c
+@@ -2094,26 +2094,43 @@ out:
+ 	return ret;
+ }
+ 
+-/* Internal regulator request function */
+-struct regulator *_regulator_get(struct device *dev, const char *id,
+-				 enum regulator_get_type get_type)
++/* common pre-checks for regulator requests */
++int _regulator_get_common_check(struct device *dev, const char *id,
++				enum regulator_get_type get_type)
+ {
+-	struct regulator_dev *rdev;
+-	struct regulator *regulator;
+-	struct device_link *link;
+-	int ret;
+-
+ 	if (get_type >= MAX_GET_TYPE) {
+ 		dev_err(dev, "invalid type %d in %s\n", get_type, __func__);
+-		return ERR_PTR(-EINVAL);
++		return -EINVAL;
+ 	}
+ 
+ 	if (id == NULL) {
+ 		pr_err("get() with no identifier\n");
+-		return ERR_PTR(-EINVAL);
++		return -EINVAL;
+ 	}
+ 
+-	rdev = regulator_dev_lookup(dev, id);
++	return 0;
++}
++
++/**
++ * _regulator_get_common - Common code for regulator requests
++ * @rdev: regulator device pointer as returned by *regulator_dev_lookup()
++ *       Its reference count is expected to have been incremented.
++ * @dev: device used for dev_printk messages
++ * @id: Supply name or regulator ID
++ * @get_type: enum regulator_get_type value corresponding to type of request
++ *
++ * Returns: pointer to struct regulator corresponding to @rdev, or ERR_PTR()
++ *	    encoded error.
++ *
++ * This function should be chained with *regulator_dev_lookup() functions.
++ */
++struct regulator *_regulator_get_common(struct regulator_dev *rdev, struct device *dev,
++					const char *id, enum regulator_get_type get_type)
++{
++	struct regulator *regulator;
++	struct device_link *link;
++	int ret;
++
+ 	if (IS_ERR(rdev)) {
+ 		ret = PTR_ERR(rdev);
+ 
+@@ -2218,6 +2235,21 @@ struct regulator *_regulator_get(struct
+ 	return regulator;
+ }
+ 
++/* Internal regulator request function */
++struct regulator *_regulator_get(struct device *dev, const char *id,
++				 enum regulator_get_type get_type)
++{
++	struct regulator_dev *rdev;
++	int ret;
++
++	ret = _regulator_get_common_check(dev, id, get_type);
++	if (ret)
++		return ERR_PTR(ret);
++
++	rdev = regulator_dev_lookup(dev, id);
++	return _regulator_get_common(rdev, dev, id, get_type);
++}
++
+ /**
+  * regulator_get - lookup and obtain a reference to a regulator.
+  * @dev: device for regulator "consumer"
+--- a/drivers/regulator/internal.h
++++ b/drivers/regulator/internal.h
+@@ -121,6 +121,10 @@ enum regulator_get_type {
+ 	MAX_GET_TYPE
+ };
+ 
++int _regulator_get_common_check(struct device *dev, const char *id,
++				enum regulator_get_type get_type);
++struct regulator *_regulator_get_common(struct regulator_dev *rdev, struct device *dev,
++					const char *id, enum regulator_get_type get_type);
+ struct regulator *_regulator_get(struct device *dev, const char *id,
+ 				 enum regulator_get_type get_type);
+ int _regulator_bulk_get(struct device *dev, int num_consumers,

@@ -1,0 +1,104 @@
+From: Sebastian Reichel <sebastian.reichel@collabora.com>
+To: Rob Herring <robh@kernel.org>,
+	Krzysztof Kozlowski <krzk+dt@kernel.org>,
+	Conor Dooley <conor+dt@kernel.org>,
+	Heiko Stuebner <heiko@sntech.de>,
+	Ulf Hansson <ulf.hansson@linaro.org>,
+	Mark Brown <broonie@kernel.org>
+Cc: "Liam Girdwood" <lgirdwood@gmail.com>,
+	"Elaine Zhang" <zhangqing@rock-chips.com>,
+	"Adrián Martínez Larumbe" <adrian.larumbe@collabora.com>,
+	"Boris Brezillon" <boris.brezillon@collabora.com>,
+	"Chen-Yu Tsai" <wens@csie.org>,
+	devicetree@vger.kernel.org, linux-rockchip@lists.infradead.org,
+	linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org,
+	"Sebastian Reichel" <sebastian.reichel@collabora.com>,
+	kernel@collabora.com
+Subject: [PATCH v5 3/7] pmdomain: rockchip: forward rockchip_do_pmu_set_power_domain errors
+Date: Wed, 11 Dec 2024 15:26:48 +0100	[thread overview]
+Message-ID: <20241211143044.9550-4-sebastian.reichel@collabora.com> (raw)
+In-Reply-To: <20241211143044.9550-1-sebastian.reichel@collabora.com>
+
+Currently rockchip_do_pmu_set_power_domain prints a warning if there
+have been errors turning on the power domain, but it does not return
+any errors and rockchip_pd_power() tries to continue setting up the
+QOS registers. This usually results in accessing unpowered registers,
+which triggers an SError and a full system hang.
+
+This improves the error handling by forwarding the error to avoid
+kernel panics.
+
+Reviewed-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Adrian Larumbe <adrian.larumbe@collabora.com> # On Rock 5B
+Signed-off-by: Sebastian Reichel <sebastian.reichel@collabora.com>
+---
+ drivers/pmdomain/rockchip/pm-domains.c | 34 +++++++++++++++++---------
+ 1 file changed, 22 insertions(+), 12 deletions(-)
+
+--- a/drivers/pmdomain/rockchip/pm-domains.c
++++ b/drivers/pmdomain/rockchip/pm-domains.c
+@@ -508,16 +508,17 @@ error:
+ 	return ret;
+ }
+ 
+-static void rockchip_do_pmu_set_power_domain(struct rockchip_pm_domain *pd,
+-					     bool on)
++static int rockchip_do_pmu_set_power_domain(struct rockchip_pm_domain *pd,
++					    bool on)
+ {
+ 	struct rockchip_pmu *pmu = pd->pmu;
+ 	struct generic_pm_domain *genpd = &pd->genpd;
+ 	u32 pd_pwr_offset = pd->info->pwr_offset;
+ 	bool is_on, is_mem_on = false;
++	int ret;
+ 
+ 	if (pd->info->pwr_mask == 0)
+-		return;
++		return 0;
+ 
+ 	if (on && pd->info->mem_status_mask)
+ 		is_mem_on = rockchip_pmu_domain_is_mem_on(pd);
+@@ -532,16 +533,21 @@ static void rockchip_do_pmu_set_power_do
+ 
+ 	wmb();
+ 
+-	if (is_mem_on && rockchip_pmu_domain_mem_reset(pd))
+-		return;
++	if (is_mem_on) {
++		ret = rockchip_pmu_domain_mem_reset(pd);
++		if (ret)
++			return ret;
++	}
+ 
+-	if (readx_poll_timeout_atomic(rockchip_pmu_domain_is_on, pd, is_on,
+-				      is_on == on, 0, 10000)) {
+-		dev_err(pmu->dev,
+-			"failed to set domain '%s', val=%d\n",
+-			genpd->name, is_on);
+-		return;
++	ret = readx_poll_timeout_atomic(rockchip_pmu_domain_is_on, pd, is_on,
++					is_on == on, 0, 10000);
++	if (ret) {
++		dev_err(pmu->dev, "failed to set domain '%s' %s, val=%d\n",
++			genpd->name, on ? "on" : "off", is_on);
++		return ret;
+ 	}
++
++	return 0;
+ }
+ 
+ static int rockchip_pd_power(struct rockchip_pm_domain *pd, bool power_on)
+@@ -567,7 +573,11 @@ static int rockchip_pd_power(struct rock
+ 			rockchip_pmu_set_idle_request(pd, true);
+ 		}
+ 
+-		rockchip_do_pmu_set_power_domain(pd, power_on);
++		ret = rockchip_do_pmu_set_power_domain(pd, power_on);
++		if (ret < 0) {
++			clk_bulk_disable(pd->num_clks, pd->clks);
++			return ret;
++		}
+ 
+ 		if (power_on) {
+ 			/* if powering up, leave idle mode */

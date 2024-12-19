@@ -308,6 +308,10 @@
 	};
 };
 
+&pd_gpu {
+	domain-supply = <&vdd_gpu_s0>;
+};
+
 &pinctrl {
 	gpio-leds {
 		lan1_led_pin: lan1-led-pin {
