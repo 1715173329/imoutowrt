@@ -346,7 +346,7 @@ TARGET_DEVICES += totolink_a8000ru
 define Device/tplink_tl-xdr-common
   DEVICE_VENDOR := TP-Link
   DEVICE_DTS_DIR := ../dts
-  DEVICE_PACKAGES := kmod-mt7915-firmware swconfig
+  DEVICE_PACKAGES := kmod-mt7915-firmware kmod-dsa-rtl8365mb
   KERNEL := kernel-bin | lzma
   KERNEL_INITRAMFS_SUFFIX := -recovery.itb
   KERNEL_INITRAMFS := kernel-bin | lzma | \
@@ -354,6 +354,8 @@ define Device/tplink_tl-xdr-common
   IMAGES := sysupgrade.itb
   IMAGE/sysupgrade.itb := append-kernel | \
 	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | pad-rootfs | append-metadata
+  DEVICE_COMPAT_VERSION := 1.1
+  DEVICE_COMPAT_MESSAGE := Config cannot be migrated from swconfig to DSA
 endef
 
 define Device/tplink_tl-xdr3230-v1

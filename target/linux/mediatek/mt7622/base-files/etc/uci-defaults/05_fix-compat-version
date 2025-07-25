@@ -5,7 +5,9 @@ case "$(board_name)" in
 	uci set system.@system[0].compat_version="1.2"
 	uci commit system
 	;;
-	buffalo,wsr-2533dhp2)
+	buffalo,wsr-2533dhp2|\
+	tplink,tl-xdr3230-v1|\
+	tplink,tl-xdr3250-v1)
 	uci set system.@system[0].compat_version="1.1"
 	uci commit system
 	;;
