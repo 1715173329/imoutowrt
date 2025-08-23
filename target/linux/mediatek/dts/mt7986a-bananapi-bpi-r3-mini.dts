@@ -157,12 +157,12 @@
 		phy14: phy@14 {
 			compatible = "ethernet-phy-id03a2.a411";
 			reg = <14>;
+			#address-cells = <1>;
+			#size-cells = <0>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&en8811_pwr_a>;
 
-			airoha,led-cfg = <1 5 1 0x0    0xc3f>,
-					 <1 4 1 0xc107 0x0>,
-					 <0 3 1 0x0    0x0>;
+			airoha,led-dts;
 			airoha,phy-handle;
 			airoha,polarity = <3>;
 
@@ -171,17 +171,38 @@
 			reset-gpios = <&pio 49 1>;
 			reset-assert-us = <10000>;
 			reset-deassert-us = <20000>;
+
+			led@0 {
+				reg = <0>;
+				pol = "active-high";
+				default-state = "enable";
+				link-cfg = <0x0>;
+				act-cfg = <0xc3f>;
+			};
+
+			led@1 {
+				reg = <1>;
+				pol = "active-high";
+				default-state = "enable";
+				link-cfg = <0xc107>;
+				act-cfg = <0x0>;
+			};
+
+			led@2 {
+				reg = <2>;
+				default-state = "disable";
+			};
 		};
 
 		phy15: phy@15 {
 			compatible = "ethernet-phy-id03a2.a411";
 			reg = <15>;
+			#address-cells = <1>;
+			#size-cells = <0>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&en8811_pwr_b>;
 
-			airoha,led-cfg = <1 5 1 0x0    0xc3f>,
-					 <1 4 1 0xc107 0x0>,
-					 <0 3 1 0x0    0x0>;
+			airoha,led-dts;
 			airoha,phy-handle;
 			airoha,polarity = <3>;
 
@@ -190,6 +211,27 @@
 			reset-gpios = <&pio 47 1>;
 			reset-assert-us = <10000>;
 			reset-deassert-us = <20000>;
+
+			led@0 {
+				reg = <0>;
+				pol = "active-high";
+				default-state = "enable";
+				link-cfg = <0x0>;
+				act-cfg = <0xc3f>;
+			};
+
+			led@1 {
+				reg = <1>;
+				pol = "active-high";
+				default-state = "enable";
+				link-cfg = <0xc107>;
+				act-cfg = <0x0>;
+			};
+
+			led@2 {
+				reg = <2>;
+				default-state = "disable";
+			};
 		};
 	};
 };

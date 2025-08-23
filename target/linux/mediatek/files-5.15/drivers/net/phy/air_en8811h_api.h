@@ -222,6 +222,8 @@ int air_surge_protect_cfg(struct phy_device *phydev);
 int air_ref_clk_speed(struct phy_device *phydev, int para);
 int air_cko_cfg(struct phy_device *phydev);
 int airoha_control_flag(struct phy_device *phydev, int mask, int val);
+int air_modify_cl45_changed(struct phy_device *phydev, int devad, u32 regnum,
+			   u16 mask, u16 set);
 #ifdef CONFIG_AIROHA_EN8811H_PHY_DEBUGFS
 int airphy_debugfs_init(struct phy_device *phydev);
 void airphy_debugfs_remove(struct phy_device *phydev);

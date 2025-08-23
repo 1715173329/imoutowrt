@@ -42,6 +42,7 @@ static struct trrg_s _fldRW_tr_reg__EcVarTrainingTime_ECNC_C8h = {
 	.RgMask =   0x0000FFF0
 };
 #endif
+
 /* Airoha MII read function */
 static int __air_mii_cl22_read(struct mii_bus *ebus,
 					int addr, unsigned int phy_register)
@@ -54,6 +55,7 @@ static int __air_mii_cl22_read(struct mii_bus *ebus,
 #endif
 	return read_data;
 }
+
 /* Airoha MII write function */
 static int __air_mii_cl22_write(struct mii_bus *ebus, int addr,
 			unsigned int phy_register, unsigned int write_data)
@@ -77,6 +79,7 @@ int air_mii_cl22_read(struct mii_bus *ebus, int addr, unsigned int phy_register)
 	mutex_unlock(&ebus->mdio_lock);
 	return read_data;
 }
+
 /* Airoha MII write function */
 int air_mii_cl22_write(struct mii_bus *ebus, int addr,
 			unsigned int phy_register, unsigned int write_data)
@@ -155,6 +158,37 @@ int air_mii_cl45_write(struct phy_device *phydev,
 		dev_err(dev, "__airoha_cl45_write, ret: %d\n", ret);
 		return ret;
 	}
+	return ret;
+}
+
+static int __air_modify_cl45_changed(struct phy_device *phydev, int devad, u32 regnum,
+			     u16 mask, u16 set)
+{
+	int new, ret;
+
+	ret = __air_mii_cl45_read(phydev, devad, regnum);
+	if (ret < 0)
+		return ret;
+
+	new = (ret & ~mask) | set;
+	if (new == ret)
+		return 0;
+
+	ret = __air_mii_cl45_write(phydev, devad, regnum, new);
+
+	return ret < 0 ? ret : 1;
+}
+
+int air_modify_cl45_changed(struct phy_device *phydev, int devad, u32 regnum,
+			   u16 mask, u16 set)
+{
+	int ret;
+	struct mii_bus *mbus = phydev_mdio_bus(phydev);
+
+	mutex_lock(&mbus->mdio_lock);
+	ret = __air_modify_cl45_changed(phydev, devad, regnum, mask, set);
+	mutex_unlock(&mbus->mdio_lock);
+
 	return ret;
 }
 
@@ -334,9 +368,11 @@ int air_surge_protect_cfg(struct phy_device *phydev)
 		ret |= air_mii_cl45_write(phydev, 0x1e, 0x800f, 0x00b0);
 		if (ret < 0)
 			return ret;
+
 		dev_info(dev, "surge protection mode - 5R\n");
 	} else
 		dev_info(dev, "surge protection mode - 0R\n");
+
 	return ret;
 }
 
@@ -348,15 +384,18 @@ int air_cko_cfg(struct phy_device *phydev)
 	u32 pbus_value = 0;
 
 	if (!priv->cko) {
-		pbus_value = air_buckpbus_reg_read(phydev, 0xcf958);
-		pbus_value &= ~BIT(26);
-		ret = air_buckpbus_reg_write(phydev, 0xcf958, pbus_value);
+		pbus_value = air_buckpbus_reg_read(phydev, EN8811H_CLK_CGM);
+		pbus_value &= ~EN8811H_CLK_CGM_CKO;
+		ret = air_buckpbus_reg_write(phydev, EN8811H_CLK_CGM, pbus_value);
 		if (ret < 0)
 			return ret;
 
-		dev_info(dev, "CKO Output mode - Disabled\n");
-	} else
-		dev_info(dev, "CKO Output mode - Enabled\n");
+		dev_info(dev, "CKO Output - Disabled\n");
+	} else {
+		pbus_value = air_buckpbus_reg_read(phydev, EN8811H_HWTRAP1);
+		dev_info(dev, "CKO Output %dMHz - Enabled\n",
+			(pbus_value & EN8811H_HWTRAP1_CKO) ? 50 : 25);
+	}
 	return ret;
 }
 
@@ -412,7 +451,10 @@ int en8811h_of_init(struct phy_device *phydev)
 	struct device *dev = phydev_dev(phydev);
 	struct device_node *of_node = dev->of_node;
 	struct en8811h_priv *priv = phydev->priv;
-	int val = 0;
+	struct fwnode_handle *child = NULL;
+	u32 val, num, ret;
+	struct air_base_t_led_cfg *led_cfg = priv->led;
+	const char *str;
 
 	dev_info(dev, "%s: start\n", __func__);
 	if (of_find_property(of_node, "airoha,polarity", NULL)) {
@@ -421,8 +463,7 @@ int en8811h_of_init(struct phy_device *phydev)
 			dev_err(dev, "airoha,polarity value is invalid.");
 			return -EINVAL;
 		}
-		if (val < AIR_POL_TX_REV_RX_NOR ||
-		    val > AIR_POL_TX_NOR_RX_REV) {
+		if (val > AIR_POL_TX_NOR_RX_REV) {
 			dev_err(dev,
 				   "airoha,polarity value %u out of range.",
 				   val);
@@ -438,7 +479,7 @@ int en8811h_of_init(struct phy_device *phydev)
 			dev_err(dev, "airoha,surge value is invalid.");
 			return -EINVAL;
 		}
-		if (val < 0 || val > 1) {
+		if (val > AIR_SURGE_5R) {
 			dev_err(dev,
 				   "airoha,surge value %u out of range.",
 				   val);
@@ -454,8 +495,7 @@ int en8811h_of_init(struct phy_device *phydev)
 			dev_err(dev, "airoha,cko-en value is invalid.");
 			return -EINVAL;
 		}
-		if (val < AIR_CKO_DIS ||
-			val > AIR_CKO_EN) {
+		if (val > AIR_CKO_EN) {
 			dev_err(dev,
 				   "airoha,cko-en value %u out of range.",
 				   val);
@@ -470,15 +510,61 @@ int en8811h_of_init(struct phy_device *phydev)
 	else
 		priv->phy_handle = false;
 
-	if (of_find_property(of_node, "airoha,led-cfg", NULL)) {
-		if (of_property_read_u32_array(dev->of_node, "airoha,led-cfg",
-				(u32 *)priv->led_cfg, EN8811H_LED_SIZE) != 0) {
-			dev_err(dev, "airoha,led-cfg value is invalid.");
-			return -EINVAL;
+	if (of_find_property(of_node, "airoha,led-dts", NULL))
+		priv->led_dts = true;
+	else
+		priv->led_dts = false;
+
+	if (priv->led_dts) {
+		device_for_each_child_node(dev, child) {
+			if (fwnode_property_read_u32(child, "reg", &num))
+				continue;
+			if (num >= EN8811H_LED_COUNT) {
+				dev_err(dev, "LED %d exceeds max count %d.\n",
+					num, EN8811H_LED_COUNT - 1);
+				continue;
+			}
+
+			ret = fwnode_property_read_string(child, "pol", &str);
+			if (!ret) {
+				if (!strcmp(str, "active-high")) {
+					led_cfg[num].pol = AIR_ACTIVE_HIGH;
+				} else if (!strcmp(str, "active-low")) {
+					led_cfg[num].pol = AIR_ACTIVE_LOW;
+				} else {
+					dev_err(dev,
+						"Invalid polarity %s for LED %d, using default.\n",
+						str, num);
+				}
+			}
+
+			ret = fwnode_property_read_string(child, "default-state", &str);
+			if (!ret) {
+				if (!strcmp(str, "enable")) {
+					led_cfg[num].en = 1;
+				} else if (!strcmp(str, "disable")) {
+					led_cfg[num].en = 0;
+				} else {
+					dev_err(dev,
+						"Invalid default-state %s for LED %d, using default.\n",
+						str, num);
+				}
+			}
+
+			ret = fwnode_property_read_u32(child, "link-cfg", &val);
+			if (!ret)
+				led_cfg[num].on_cfg = val;
+
+			ret = fwnode_property_read_u32(child, "act-cfg", &val);
+			if (!ret)
+				led_cfg[num].blk_cfg = val;
+
+			dev_dbg(dev, "LED %d: pol %d, default-state %d, link-cfg 0x%x, blink-cfg 0x%x\n",
+					num, led_cfg[num].pol, led_cfg[num].en,
+					led_cfg[num].on_cfg, led_cfg[num].blk_cfg);
 		}
-		priv->led_cfg_valid = true;
-	} else
-		priv->led_cfg_valid = false;
+		fwnode_handle_put(child);
+	}
 
 	return 0;
 }
@@ -610,7 +696,7 @@ static int air_set_mode(struct phy_device *phydev, int dbg_mode)
 	switch (dbg_mode) {
 	case AIR_PORT_MODE_FORCE_100:
 		pr_notice("\nForce 100M\n");
-		val = air_mii_cl22_read(mbus, addr, MII_ADVERTISE) | BIT(8);
+		val = (air_mii_cl22_read(mbus, addr, MII_ADVERTISE) | BIT(8)) & ~BIT(12);
 		ret = air_mii_cl22_write(mbus, addr, MII_ADVERTISE, val);
 		if (unlikely(ret < 0))
 			break;
@@ -630,7 +716,7 @@ static int air_set_mode(struct phy_device *phydev, int dbg_mode)
 		break;
 	case AIR_PORT_MODE_FORCE_1000:
 		pr_notice("\nForce 1000M\n");
-		val = air_mii_cl22_read(mbus, addr, MII_ADVERTISE) & ~BIT(8);
+		val = air_mii_cl22_read(mbus, addr, MII_ADVERTISE) & ~BIT(8) | BIT(12);
 		ret = air_mii_cl22_write(mbus, addr, MII_ADVERTISE, val);
 		if (unlikely(ret < 0))
 			break;
@@ -650,7 +736,7 @@ static int air_set_mode(struct phy_device *phydev, int dbg_mode)
 		break;
 	case AIR_PORT_MODE_FORCE_2500:
 		pr_notice("\nForce 2500M\n");
-		val = air_mii_cl22_read(mbus, addr, MII_ADVERTISE) & ~BIT(8);
+		val = air_mii_cl22_read(mbus, addr, MII_ADVERTISE) & ~BIT(8) | BIT(12);
 		ret = air_mii_cl22_write(mbus, addr, MII_ADVERTISE, val);
 		if (unlikely(ret < 0))
 			break;
@@ -670,7 +756,7 @@ static int air_set_mode(struct phy_device *phydev, int dbg_mode)
 		break;
 	case AIR_PORT_MODE_AUTONEGO:
 		pr_notice("\nAutonego mode\n");
-		val = air_mii_cl22_read(mbus, addr, MII_ADVERTISE) | BIT(8);
+		val = air_mii_cl22_read(mbus, addr, MII_ADVERTISE) | BIT(8) | BIT(12);
 		ret = air_mii_cl22_write(mbus, addr, MII_ADVERTISE, val);
 		if (unlikely(ret < 0))
 			break;
@@ -1335,16 +1421,15 @@ static int dbg_regs_show(struct seq_file *seq, void *v)
 		seq_printf(seq, "| RG_MII_REG_%02x         : 0x%08x |\n",
 					reg, air_mii_cl22_read(mbus, addr, reg));
 	}
-	seq_printf(seq, "| RG_ABILITY_2G5        : 0x%08x |\n",
+	seq_printf(seq, "| RG_MII_2G5_ADV        : 0x%08x |\n",
 		    air_mii_cl45_read(phydev, 0x7, 0x20));
-	seq_printf(seq, "| RG_LINK_PARTNER_2G5   : 0x%08x |\n",
+	seq_printf(seq, "| RG_MII_2G5_LP         : 0x%08x |\n",
 		   air_buckpbus_reg_read(phydev, 0x3b30));
 	ret = air_mii_cl22_write(mbus, addr, 0x1f, 0x0);
 	if (ret < 0)
 		return 0;
-	ret = air_mii_cl22_read(mbus, addr, 0x1d);
 	seq_printf(seq, "| RG_MII_REF_CLK        : 0x%08x |\n",
-		   ret);
+		   air_mii_cl22_read(mbus, addr, 0x1d));
 	seq_printf(seq, "| RG_PHY_ANA            : 0x%08x |\n",
 		   air_buckpbus_reg_read(phydev, 0xca0f8));
 	seq_printf(seq, "| RG_HW_STRAP1          : 0x%08x |\n",
@@ -1369,10 +1454,16 @@ static int dbg_regs_show(struct seq_file *seq, void *v)
 		   air_buckpbus_reg_read(phydev, 0x1020c));
 	seq_printf(seq, "| RG_MD32_FW_READY      : 0x%08x |\n",
 		   air_mii_cl45_read(phydev, 0x1e, 0x8009));
+	seq_printf(seq, "| RG_MD32_OPTION        : 0x%08x |\n",
+		   air_buckpbus_reg_read(phydev, 0x3a9c));
 	seq_printf(seq, "| RG_RX_SYNC_CNT        : 0x%08x |\n",
 		   air_buckpbus_reg_read(phydev, 0x3A64));
 	seq_printf(seq, "| RG_WHILE_LOOP_COUNT   : 0x%08x |\n",
 		   air_buckpbus_reg_read(phydev, 0x3A48));
+	for (reg = 0x21; reg <= 0x29; reg++) {
+		seq_printf(seq, "| RG_MMD_1f_%02x          : 0x%08x |\n",
+					reg, air_mii_cl45_read(phydev, 0x1f, reg));
+	}
 	return 0;
 }
 
