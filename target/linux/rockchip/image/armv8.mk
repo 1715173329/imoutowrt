@@ -32,6 +32,12 @@ define Device/rk3568
   BOOT_FLOW := pine64-img
 endef
 
+define Device/rk3576
+  SOC := rk3576
+  KERNEL_LOADADDR := 0x43000000
+  BOOT_FLOW := pine64-img
+endef
+
 define Device/rk3582
   SOC := rk3582
   KERNEL_LOADADDR := 0x03000000
@@ -354,6 +360,13 @@ define Device/radxa_rock-4c-plus
   DEVICE_MODEL := ROCK 4C+
 endef
 TARGET_DEVICES += radxa_rock-4c-plus
+
+define Device/radxa_rock-4d
+  $(Device/rk3576)
+  DEVICE_VENDOR := Radxa
+  DEVICE_MODEL := ROCK 4D
+endef
+TARGET_DEVICES += radxa_rock-4d
 
 define Device/radxa_rock-4se
   $(Device/rk3399)
