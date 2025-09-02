@@ -333,6 +333,15 @@ define Device/radxa_rock-4c-plus
 endef
 TARGET_DEVICES += radxa_rock-4c-plus
 
+define Device/radxa_rock-4d
+  DEVICE_VENDOR := Radxa
+  DEVICE_MODEL := ROCK 4D
+  SOC := rk3576
+  BOOT_FLOW := pine64-img
+  DEVICE_PACKAGES := kmod-scsi-ufs-rockchip kmod-hwmon-pwmfan
+endef
+TARGET_DEVICES += radxa_rock-4d
+
 define Device/radxa_rock-4se
   DEVICE_VENDOR := Radxa
   DEVICE_MODEL := ROCK 4SE
