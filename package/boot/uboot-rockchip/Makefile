@@ -323,6 +323,23 @@ define U-Boot/sige3-rk3568
 endef
 
 
+# RK3576 boards
+
+define U-Boot/rk3576/Default
+  BUILD_SUBTARGET:=armv8
+  DEPENDS:=+PACKAGE_u-boot-$(1):trusted-firmware-a-rk3576
+  ATF:=$(RK3576_ATF)
+  TPL:=$(RK3576_TPL)
+endef
+
+define U-Boot/nanopi-r76s-rk3576
+  $(U-Boot/rk3576/Default)
+  NAME:=NanoPi R76S
+  BUILD_DEVICES:= \
+    friendlyarm_nanopi-r76s
+endef
+
+
 # RK3588 boards
 
 define U-Boot/rk3588/Default
@@ -434,6 +451,7 @@ UBOOT_TARGETS := \
   rock-3a-rk3568 \
   rock-3b-rk3568 \
   sige3-rk3568 \
+  nanopi-r76s-rk3576 \
   cyber3588-aib-rk3588 \
   nanopc-t6-rk3588 \
   orangepi-5-plus-rk3588 \
