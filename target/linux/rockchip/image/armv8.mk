@@ -208,6 +208,15 @@ define Device/friendlyarm_nanopi-r6s
 endef
 TARGET_DEVICES += friendlyarm_nanopi-r6s
 
+define Device/friendlyarm_nanopi-r76s
+  DEVICE_VENDOR := FriendlyARM
+  DEVICE_MODEL := NanoPi R76S
+  SOC := rk3576
+  BOOT_FLOW := pine64-img
+  DEVICE_PACKAGES := kmod-r8125 kmod-rtw88-8822cs wpad-openssl
+endef
+TARGET_DEVICES += friendlyarm_nanopi-r76s
+
 define Device/huake_guangmiao-g4c
   DEVICE_VENDOR := Huake-Cloud
   DEVICE_MODEL := GuangMiao G4C
