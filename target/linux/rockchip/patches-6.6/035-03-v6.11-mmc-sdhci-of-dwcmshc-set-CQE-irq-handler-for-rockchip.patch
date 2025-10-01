@@ -1,0 +1,40 @@
+From b81e4cc84bfcf9d06b90701cc3112b7ecbe2ae71 Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko.stuebner@cherry.de>
+Date: Thu, 30 May 2024 23:55:47 +0200
+Subject: [PATCH] mmc: sdhci-of-dwcmshc: set CQE irq-handler for rockchip
+ variants
+
+The dwcmshc used on Rockchip rk3568 and rk3588 can use cqe, so set
+the needed irq handler.
+
+Tested on a rk3588-tiger SoM with dd, hdparm and fio. fio performance
+does increase slightly from
+
+Run status group 0 (all jobs):
+   READ: bw=209MiB/s (219MB/s), 209MiB/s-209MiB/s (219MB/s-219MB/s), io=4096MiB (4295MB), run=19607-19607msec
+
+without CQE to
+
+Run status group 0 (all jobs):
+   READ: bw=215MiB/s (225MB/s), 215MiB/s-215MiB/s (225MB/s-225MB/s), io=4096MiB (4295MB), run=19062-19062msec
+
+with CQE enabled.
+
+Signed-off-by: Heiko Stuebner <heiko.stuebner@cherry.de>
+Acked-by: Adrian Hunter <adrian.hunter@intel.com>
+Link: https://lore.kernel.org/r/20240530215547.2192457-1-heiko@sntech.de
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+---
+ drivers/mmc/host/sdhci-of-dwcmshc.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/mmc/host/sdhci-of-dwcmshc.c
++++ b/drivers/mmc/host/sdhci-of-dwcmshc.c
+@@ -449,6 +449,7 @@ static const struct sdhci_ops sdhci_dwcm
+ 	.get_max_clock		= rk35xx_get_max_clock,
+ 	.reset			= rk35xx_sdhci_reset,
+ 	.adma_write_desc	= dwcmshc_adma_write_desc,
++	.irq			= dwcmshc_cqe_irq_handler,
+ };
+ 
+ static const struct sdhci_pltfm_data sdhci_dwcmshc_pdata = {

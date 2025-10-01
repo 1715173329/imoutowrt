@@ -1,0 +1,72 @@
+From 52bf134fca61f0cdb400f4b27766149ca6e1550c Mon Sep 17 00:00:00 2001
+From: Sergey Khimich <serghox@gmail.com>
+Date: Tue, 19 Mar 2024 14:59:31 +0300
+Subject: [PATCH] mmc: cqhci: Add cqhci set_tran_desc() callback
+
+There are could be specific limitations for some mmc
+controllers for setting cqhci transfer descriptors.
+So add callback to allow implement driver specific function.
+
+Signed-off-by: Sergey Khimich <serghox@gmail.com>
+Acked-by: Adrian Hunter <adrian.hunter@intel.com>
+Link: https://lore.kernel.org/r/20240319115932.4108904-2-serghox@gmail.com
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+---
+ drivers/mmc/host/cqhci-core.c | 11 ++++++++---
+ drivers/mmc/host/cqhci.h      |  4 ++++
+ 2 files changed, 12 insertions(+), 3 deletions(-)
+
+--- a/drivers/mmc/host/cqhci-core.c
++++ b/drivers/mmc/host/cqhci-core.c
+@@ -474,8 +474,8 @@ static int cqhci_dma_map(struct mmc_host
+ 	return sg_count;
+ }
+ 
+-static void cqhci_set_tran_desc(u8 *desc, dma_addr_t addr, int len, bool end,
+-				bool dma64)
++void cqhci_set_tran_desc(u8 *desc, dma_addr_t addr, int len, bool end,
++			 bool dma64)
+ {
+ 	__le32 *attr = (__le32 __force *)desc;
+ 
+@@ -495,6 +495,7 @@ static void cqhci_set_tran_desc(u8 *desc
+ 		dataddr[0] = cpu_to_le32(addr);
+ 	}
+ }
++EXPORT_SYMBOL(cqhci_set_tran_desc);
+ 
+ static int cqhci_prep_tran_desc(struct mmc_request *mrq,
+ 			       struct cqhci_host *cq_host, int tag)
+@@ -522,7 +523,11 @@ static int cqhci_prep_tran_desc(struct m
+ 
+ 		if ((i+1) == sg_count)
+ 			end = true;
+-		cqhci_set_tran_desc(desc, addr, len, end, dma64);
++		if (cq_host->ops->set_tran_desc)
++			cq_host->ops->set_tran_desc(cq_host, &desc, addr, len, end, dma64);
++		else
++			cqhci_set_tran_desc(desc, addr, len, end, dma64);
++
+ 		desc += cq_host->trans_desc_len;
+ 	}
+ 
+--- a/drivers/mmc/host/cqhci.h
++++ b/drivers/mmc/host/cqhci.h
+@@ -293,6 +293,9 @@ struct cqhci_host_ops {
+ 	int (*program_key)(struct cqhci_host *cq_host,
+ 			   const union cqhci_crypto_cfg_entry *cfg, int slot);
+ #endif
++	void (*set_tran_desc)(struct cqhci_host *cq_host, u8 **desc,
++			      dma_addr_t addr, int len, bool end, bool dma64);
++
+ };
+ 
+ static inline void cqhci_writel(struct cqhci_host *host, u32 val, int reg)
+@@ -318,6 +321,7 @@ irqreturn_t cqhci_irq(struct mmc_host *m
+ int cqhci_init(struct cqhci_host *cq_host, struct mmc_host *mmc, bool dma64);
+ struct cqhci_host *cqhci_pltfm_init(struct platform_device *pdev);
+ int cqhci_deactivate(struct mmc_host *mmc);
++void cqhci_set_tran_desc(u8 *desc, dma_addr_t addr, int len, bool end, bool dma64);
+ static inline int cqhci_suspend(struct mmc_host *mmc)
+ {
+ 	return cqhci_deactivate(mmc);
