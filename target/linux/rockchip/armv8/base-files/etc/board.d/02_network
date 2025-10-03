@@ -29,6 +29,7 @@ rockchip_setup_interfaces()
 	friendlyarm,nanopi-r5c|\
 	lunzn,fastrhino-r66s|\
 	mmbox,anas3035|\
+	radxa,e20c|\
 	radxa,e25|\
 	radxa,rock-3b|\
 	xunlong,orangepi-5-plus|\

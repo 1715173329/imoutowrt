@@ -34,6 +34,17 @@ Signed-off-by: David Bauer <mail@david-bauer.net>
  &u2phy0_host {
  	phy-supply = <&vdd_5v>;
  };
+--- a/arch/arm64/boot/dts/rockchip/rk3528-radxa-e20c.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3528-radxa-e20c.dts
+@@ -299,7 +299,7 @@
+ 	cap-mmc-highspeed;
+ 	cap-sd-highspeed;
+ 	disable-wp;
+-	sd-uhs-sdr104;
++	sd-uhs-sdr50;
+ 	vmmc-supply = <&vcc_3v3>;
+ 	vqmmc-supply = <&vccio_sd>;
+ 	status = "okay";
 --- a/arch/arm64/boot/dts/rockchip/rk3576-rock-4d.dts
 +++ b/arch/arm64/boot/dts/rockchip/rk3576-rock-4d.dts
 @@ -771,7 +771,7 @@
