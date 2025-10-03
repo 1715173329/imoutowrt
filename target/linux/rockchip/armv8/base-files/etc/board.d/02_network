@@ -31,6 +31,7 @@ rockchip_setup_interfaces()
 	lunzn,fastrhino-r66s|\
 	mmbox,anas3035|\
 	nlnet,xiguapi-v3|\
+	radxa,e20c|\
 	radxa,e25|\
 	radxa,rock-3b|\
 	xunlong,orangepi-5-plus)
