@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Entrpi <entrpi@proton.me>
+Date: Sun, 1 Feb 2026 19:36:00 +1100
+Subject: [PATCH] net: realtek: fix shutdown panic in r8125/r8126 get_stats64
+
+During system poweroff, netif_carrier_off() in the shutdown path
+schedules a linkwatch_event on the events_unbound workqueue.  This
+event fires asynchronously after the PCIe device has already been
+powered down, calling get_stats64 -> dump_tally_counter which does
+MMIO to the dead device.  On ARM64 this triggers a fatal SError.
+
+Check R8125_FLAG_DOWN / R8126_FLAG_DOWN before the MMIO tally dump.
+The flag is already set in close() before netif_carrier_off(), so
+the ordering is correct.  Cached counter values are still returned.
+---
+ drivers/net/ethernet/realtek/r8125/r8125_n.c | 6 ++++--
+ drivers/net/ethernet/realtek/r8126/r8126_n.c | 6 ++++--
+ 2 files changed, 8 insertions(+), 4 deletions(-)
+
+--- a/src/r8127_n.c
++++ b/src/r8127_n.c
+@@ -14008,9 +14008,11 @@ rtl8127_get_stats64(struct net_device *d
+ 
+         /*
+          * Fetch additional counter values missing in stats collected by driver
+-         * from tally counters.
++         * from tally counters.  Skip if device is shutting down to avoid MMIO
++         * to a powered-down PCIe endpoint (causes ARM SError on shutdown).
+          */
+-        rtl8127_dump_tally_counter(tp, paddr);
++        if (!test_bit(R8127_FLAG_DOWN, tp->task_flags))
++                rtl8127_dump_tally_counter(tp, paddr);
+ 
+         stats->tx_errors = le64_to_cpu(counters->tx_errors);
+         stats->collisions = le32_to_cpu(counters->tx_multi_collision);

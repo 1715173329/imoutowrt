@@ -1,0 +1,88 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Entrpi <entrpi@proton.me>
+Date: Thu, 5 Feb 2026 21:29:15 +1100
+Subject: [PATCH] net: realtek: r8125/r8126: Add IRQ affinity hint for
+ performance cores
+
+On ARM big.LITTLE systems, network interrupt processing benefits from
+running on the performance (big) cores rather than the efficiency
+(little) cores. This reduces latency variance and improves throughput
+for latency-sensitive workloads.
+
+Add a helper function to detect little cores based on CPU capacity
+(using topology_get_cpu_scale), and set IRQ affinity hints to prefer
+big cores when allocating MSI-X interrupts.
+
+The capacity threshold of 512 is chosen to distinguish between
+efficiency cores (typically ~446 on Sky1) and performance cores
+(typically ~1024).
+---
+ drivers/net/ethernet/realtek/r8125/r8125_n.c | 35 ++++++++++++++++++++
+ drivers/net/ethernet/realtek/r8126/r8126_n.c | 35 ++++++++++++++++++++
+ 2 files changed, 70 insertions(+)
+
+--- a/src/r8127_n.c
++++ b/src/r8127_n.c
+@@ -14661,6 +14661,22 @@ static void rtl8127_free_irq(struct rtl8
+         }
+ }
+ 
++#ifdef CONFIG_ARM64
++/*
++ * Check if CPU is a little/efficiency core based on capacity.
++ * On ARM big.LITTLE systems, efficiency cores have lower capacity (~446)
++ * compared to performance cores (~1024). We avoid scheduling network
++ * interrupts on little cores to reduce latency variance.
++ */
++#define RTL8127_LITTLE_CORE_CAPACITY 512
++
++static bool rtl8127_is_little_core(int cpu)
++{
++        unsigned long capacity = topology_get_cpu_scale(cpu);
++        return capacity < RTL8127_LITTLE_CORE_CAPACITY;
++}
++#endif
++
+ static int rtl8127_alloc_irq(struct rtl8127_private *tp)
+ {
+         struct net_device *dev = tp->dev;
+@@ -14670,6 +14686,19 @@ static int rtl8127_alloc_irq(struct rtl8
+         int i = 0;
+         const int len = sizeof(tp->irq_tbl[0].name);
+ 
++#ifdef CONFIG_ARM64
++        cpumask_var_t big_core_mask;
++        int cpu;
++
++        /* Build mask of performance cores for IRQ affinity */
++        if (zalloc_cpumask_var(&big_core_mask, GFP_KERNEL)) {
++                for_each_online_cpu(cpu) {
++                        if (!rtl8127_is_little_core(cpu))
++                                cpumask_set_cpu(cpu, big_core_mask);
++                }
++        }
++#endif
++
+ #if defined(RTL_USE_NEW_INTR_API)
+         for (i=0; i<tp->irq_nvecs; i++) {
+                 irq = &tp->irq_tbl[i];
+@@ -14688,6 +14717,9 @@ static int rtl8127_alloc_irq(struct rtl8
+ 
+                 irq->vector = pci_irq_vector(tp->pci_dev, i);
+                 irq->requested = 1;
++#ifdef CONFIG_ARM64
++                irq_set_affinity_hint(irq->vector, big_core_mask);
++#endif
+         }
+ #else
+         unsigned long irq_flags = 0;
+@@ -14725,6 +14757,9 @@ static int rtl8127_alloc_irq(struct rtl8
+         if (rc)
+                 rtl8127_free_irq(tp);
+ 
++#ifdef CONFIG_ARM64
++        free_cpumask_var(big_core_mask);
++#endif
+         return rc;
+ }
+ 
