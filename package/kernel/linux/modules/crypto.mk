@@ -1000,7 +1000,7 @@ define KernelPackage/crypto-sha1/arm-neon
 endef
 
 define KernelPackage/crypto-sha1/aarch64-ce
-  FILES+=$(LINUX_DIR)/arch/arm64/crypto/sha1-ce.ko
+  FILES+=$(LINUX_DIR)/arch/arm64/crypto/sha1-ce.ko@lt6.18
   AUTOLOAD+=$(call AutoLoad,09,sha1-ce)
 endef
 
@@ -1141,7 +1141,7 @@ define KernelPackage/crypto-sha512/arm
 endef
 
 define KernelPackage/crypto-sha512/aarch64
-  FILES+=$(LINUX_DIR)/arch/arm64/crypto/sha512-arm64.ko
+  FILES+=$(LINUX_DIR)/arch/arm64/crypto/sha512-arm64.ko@lt6.18
   AUTOLOAD+=$(call AutoLoad,09,sha512-arm64)
 endef
 
