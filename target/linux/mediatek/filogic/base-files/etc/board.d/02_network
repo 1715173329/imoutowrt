@@ -20,6 +20,7 @@ mediatek_setup_interfaces()
 	nokia,ea0326gmp|\
 	mercusys,mr80x-v3|\
 	routerich,ax3000-v1|\
+	ruijie,rg-x60|\
 	zbtlink,zbt-z8103ax|\
 	zbtlink,zbt-z8103ax-c)
 		ucidef_set_interfaces_lan_wan "lan1 lan2 lan3" eth1
@@ -290,11 +291,6 @@ mediatek_setup_macs()
 		lan_mac=$(mtd_get_mac_ascii factory lanMac)
 		wan_mac=$(macaddr_add "$lan_mac" 1)
 		label_mac=$wan_mac
-		;;
-	ruijie,rg-x60-pro)
-		label_mac=$(mtd_get_mac_ascii product_info ethaddr)
-		wan_mac=$label_mac
-		lan_mac=$(macaddr_add "$label_mac" 1)
 		;;
 	tplink,eap683-lr)
 		label_mac=$(get_mac_binary "/tmp/factory/default-mac" 0)
