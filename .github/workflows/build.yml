@@ -1,65 +1,38 @@
-name: Build-7DR7299
+name: Build 7DR7299 ImmortalWrt
 
 on:
-  push:
-    branches:
-      - master-mediatek-7dr7299
   workflow_dispatch:
-
-env:
-  TZ: Asia/Shanghai
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Initialization environment
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo -E apt-get -qq update
-        sudo -E apt-get -qq install $(curl -fsSL https://githubusercontent.com)
-        sudo -E apt-get -qq autoremove --purge
-        sudo -E apt-get -qq clean
-        sudo timedatectl set-timezone "$TZ"
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake flex git libssl-dev libncurses5-dev unzip zlib1g-dev gettext
 
-    - name: Clone source code
-      run: |
-        # 直接指定完整仓库地址和分支
-        git clone --depth 1 https://github.com/1715173329/imoutowrt -b master-mediatek-7dr7299 openwrt
+      - name: Clone source code
+        run: |
+          git clone -b master-mediatek-7dr7299 https://github.com/1715173329/imoutowrt imoutowrt
+          cd imoutowrt
 
-    - name: Update & Install feeds
-      run: |
-        cd openwrt
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
+      - name: Update feeds
+        run: |
+          cd imoutowrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
 
-    - name: Generate configuration
-      run: |
-        cd openwrt
-        make defconfig
+      - name: Build firmware
+        run: |
+          cd imoutowrt
+          make -j$(nproc)
 
-    - name: Download package
-      run: |
-        cd openwrt
-        make download -j8
-
-    - name: Compile the firmware
-      id: compile
-      run: |
-        cd openwrt
-        # 7DR7299 编译较重，此处开启多线程
-        make -j$(nproc) || make -j1 V=s
-        echo "status=success" >> $GITHUB_OUTPUT
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      if: steps.compile.outputs.status == 'success' && !cancelled()
-      with:
-        name: ImmortalWrt_7DR7299_Firmware
-        path: openwrt/bin/targets/
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-7dr7299
+          path: imoutowrt/bin/targets/mediatek/mt7622/
