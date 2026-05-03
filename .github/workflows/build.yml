@@ -31,7 +31,7 @@ jobs:
     - name: Clone source code
       run: |
         # 直接指定完整仓库地址和分支
-        git clone --depth 1 https://github.com -b master-mediatek-7dr7299 openwrt
+        git clone --depth 1 https://github.com/1715173329/imoutowrt -b master-mediatek-7dr7299 openwrt
 
     - name: Update & Install feeds
       run: |
