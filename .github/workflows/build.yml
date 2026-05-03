@@ -75,7 +75,7 @@ jobs:
       run: df -hT
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: steps.compile.outputs.status == 'success' && !cancelled()
       with:
         name: ImmortalWrt_7DR7299_Firmware
