@@ -1,76 +1,53 @@
 name: Build 7DR7299 ImmortalWrt
 
+# 只允许手动触发
 on:
   workflow_dispatch:
 
 env:
-  REPO_URL: https://github.com
-  REPO_BRANCH: master-mediatek-7dr7299
-  CONFIG_FILE: .config
-  TZ: Asia/Shanghai
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-
+    # 这里改成 Debian 11 (bullseye)
+    runs-on: debian-11
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Initialization environment
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup /cache /var/lib/apt/lists/*
-        sudo apt update
-        sudo apt install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev swig libpython3-dev wheel
-        sudo apt autoremove --purge -y
-        sudo apt clean
-        sudo timedatectl set-timezone "$TZ"
+      - name: Install compile dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential libncurses-dev gawk flex bison git gettext libssl-dev unzip curl python3
 
-    - name: Clone source code
-      run: |
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
+      - name: Clone 7DR7299 专用源码
+        run: |
+          git clone -b master-mediatek-7dr7299 https://github.com/1715173329/imoutowrt openwrt
 
-    - name: Update & Install feeds
-      run: |
-        cd openwrt
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
+      - name: Update & Install feeds
+        run: |
+          cd openwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
 
-    - name: Load custom configuration
-      run: |
-        # 确保根目录的 .config 被拷贝到源码目录
-        if [ -f $CONFIG_FILE ]; then
-          cp $CONFIG_FILE openwrt/.config
-          echo "Config file found and copied."
-        else
-          echo "ERROR: .config file not found in repository root!"
-          exit 1
-        fi
-        cd openwrt
-        # 补全依赖并修正配置
-        make defconfig
+      - name: Generate config
+        run: |
+          cd openwrt
+          make defconfig
+          echo "CONFIG_PACKAGE_onionshare-cli=n" >> .config
 
-    - name: Download package
-      run: |
-        cd openwrt
-        make download -j8
-        find dl -size -1024c -exec ls -l {} \;
-        find dl -size -1024c -exec rm -f {} \;
+      - name: Download source files
+        run: |
+          cd openwrt
+          make download -j$(nproc)
 
-    - name: Compile the firmware
-      id: compile
-      run: |
-        cd openwrt
-        echo -e "$(nproc) thread compile"
-        # 多线程失败会自动切换单线程并显示报错详情
-        make -j$(nproc) || make -j1 V=s
-        echo "status=success" >> $GITHUB_OUTPUT
+      - name: Compile firmware
+        run: |
+          cd openwrt
+          make -j$(nproc) V=s
 
-    - name: Upload firmware directory
-      uses: actions/upload-artifact@v4
-      if: steps.compile.outputs.status == 'success'
-      with:
-        name: 7DR7299-Firmware
-        path: openwrt/bin/targets/
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 7DR7299-Firmware
+          path: openwrt/bin/targets/mediatek/mt7622
