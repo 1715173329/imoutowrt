@@ -1,0 +1,54 @@
+name: Build 7DR799 ImmortalWrt
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential libncurses-dev gawk flex bison git libssl-dev python3
+
+      - name: Clone source
+        run: |
+          git clone -b master-mediatek-7dr7299 https://github.com/1715173329/imoutowrt openwrt
+
+      - name: Update feeds
+        run: |
+          cd openwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Build config
+        run: |
+          cd openwrt
+          make defconfig
+          echo "CONFIG_PACKAGE_onionshare-cli=n" >> .config
+
+      - name: Download sources
+        run: |
+          cd openwrt
+          make download -j2
+
+      # 👆 这里修复：编译用 -j2，绝对不崩
+      - name: Compile
+        run: |
+          cd openwrt
+          make -j2 V=s
+
+      # 👆 这里修复：路径改成 filogic，正确！
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: 7DR7299-Firmware
+          path: openwrt/bin/targets/mediatek/filogic/
+          retention-days: 30

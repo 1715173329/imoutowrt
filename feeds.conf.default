@@ -6,3 +6,6 @@ src-git video https://github.com/openwrt/video.git
 #src-git targets https://github.com/openwrt/targets.git
 #src-git oldpackages http://git.openwrt.org/packages.git
 #src-link custom /usr/src/openwrt/custom-feed
+src-git daed https://github.com/QiuSimons/luci-app-daed
+src-git geodata https://github.com/sbwml/v2ray-geodata
+src-git mosdns https://github.com/sbwml/luci-app-mosdns
