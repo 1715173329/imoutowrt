@@ -140,6 +140,7 @@
 	nvmem-cell-names = "mac-address";
 	phy-handle = <&phy1>;
 	phy-mode = "usxgmii";
+	managed = "in-band-status";
 	status = "okay";
 };
 
@@ -259,12 +260,13 @@
 };
 
 &mdio_bus {
+	reset-gpios = <&pio 21 GPIO_ACTIVE_LOW>;
+	reset-delay-us = <100000>;
+	reset-post-delay-us = <221000>;
+
 	phy1: ethernet-phy@1 {
 		compatible = "ethernet-phy-ieee802.3-c45";
 		reg = <1>;
-		reset-assert-us = <100000>;
-		reset-deassert-us = <221000>;
-		reset-gpios = <&pio 21 GPIO_ACTIVE_LOW>;
 
 		leds {
 			#address-cells = <1>;
