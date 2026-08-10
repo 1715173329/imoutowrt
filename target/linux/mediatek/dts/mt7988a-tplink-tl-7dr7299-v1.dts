@@ -281,14 +281,11 @@
 		};
 	};
 
-	rtl837x-gsw@1d {
-		compatible = "realtek,rtl837x";
+	switch@1d {
+		compatible = "realtek,rtl8372n";
 		reg = <29>;
-		ethernet = <&gmac2>;
 		reset-gpios = <&pio 57 GPIO_ACTIVE_HIGH>;
-		rtl837x,cpu-port = <0>;
-		rtl837x,sds0mode = "10g-kr";
-		sfp = <&sfp0>;
+		dsa,member = <1 0>;
 
 		extra-init =
 			/* LED_RLDP_CTRL_3~8_P2_LED3_0_RLDP */
@@ -322,6 +319,83 @@
 			<0x6520 0x1E00     0         >, // RTL8373_LED_GLB_CTRL_ADDR
 			/* LED_GLB_CTRL_PWR_ON_BLINK_SEL */
 			<0x6520 0x18       1         >; // RTL8373_LED_GLB_CTRL_ADDR
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@3 {
+				reg = <3>;
+				label = "cpu";
+				ethernet = <&gmac2>;
+				phy-mode = "10gbase-r";
+
+				fixed-link {
+					speed = <10000>;
+					full-duplex;
+					pause;
+					asym-pause;
+				};
+			};
+
+			port@4 {
+				reg = <4>;
+				label = "lan3";
+				phy-mode = "internal";
+				phy-handle = <&internal_phy4>;
+			};
+
+			port@5 {
+				reg = <5>;
+				label = "lan4";
+				phy-mode = "internal";
+				phy-handle = <&internal_phy5>;
+			};
+
+			port@6 {
+				reg = <6>;
+				label = "lan5";
+				phy-mode = "internal";
+				phy-handle = <&internal_phy6>;
+			};
+
+			port@7 {
+				reg = <7>;
+				label = "lan6";
+				phy-mode = "internal";
+				phy-handle = <&internal_phy7>;
+			};
+
+			port@8 {
+				reg = <8>;
+				label = "sfp";
+				sfp = <&sfp0>;
+				phy-mode = "10gbase-r";
+				managed = "in-band-status";
+			};
+		};
+
+		mdio {
+			internal_phy4: phy@4 {
+				compatible = "ethernet-phy-ieee802.3-c45";
+				reg = <4>;
+			};
+
+			internal_phy5: phy@5 {
+				compatible = "ethernet-phy-ieee802.3-c45";
+				reg = <5>;
+			};
+
+			internal_phy6: phy@6 {
+				compatible = "ethernet-phy-ieee802.3-c45";
+				reg = <6>;
+			};
+
+			internal_phy7: phy@7 {
+				compatible = "ethernet-phy-ieee802.3-c45";
+				reg = <7>;
+			};
+		};
 	};
 };
 
@@ -510,6 +584,7 @@
 };
 
 &switch {
+	dsa,member = <0 0>;
 	status = "okay";
 };
 

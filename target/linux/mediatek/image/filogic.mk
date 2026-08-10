@@ -3554,7 +3554,7 @@ define Device/tplink_tl-7dr7299-v1
   DEVICE_DTS_DIR := ../dts
   DEVICE_DTS_LOADADDR := 0x47f00000
   DEVICE_PACKAGES := kmod-mt7992-firmware mt7988-wo-firmware \
-	kmod-switch-rtl837x swconfig kmod-sfp kmod-usb3 automount
+	kmod-dsa-rtl837x kmod-sfp kmod-usb3 automount
   KERNEL_LOADADDR := 0x48000000
   UBINIZE_OPTS := -E 5
   BLOCKSIZE := 128k
