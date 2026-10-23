@@ -1,0 +1,576 @@
+From c0334f4a8095a3bb79983ef7fac52ff033da1bea Mon Sep 17 00:00:00 2001
+From: Tianling Shen <cnsztl@gmail.com>
+Date: Fri, 23 Oct 2026 18:00:35 +0800
+Subject: [PATCH] dhcpv6: refresh bindings after on-link prefix changes
+
+Learning a new RA prefix currently forces the client through EXIT,
+releasing valid leases and restarting server discovery even when it
+remains on the same link. This causes unnecessary lease churn and can
+trigger PPP teardown on affected access networks.
+
+Queue significant on-link prefix changes independently of restart
+signals and consume existing replies before starting a refresh at a
+bound safe point. Preserve active acquisition and maintenance
+exchanges, including an already accepted Reconfigure, and rate-limit
+RA-triggered attempts to one every 30 seconds.
+
+Use Renew for valid delegated prefixes, Confirm for address-only
+bindings and Information-request for information-only configuration,
+as described in RFC 9915 section 18.2.12. Preserve stateless
+rediscovery when the original configuration requests IAs.
+
+Track on-link PIOs separately from SLAAC addresses so L-only and
+non-/64 prefixes, equal-count prefix replacements and explicit
+deprecation are detected on both regular and point-to-point links.
+Repeated advertisements do not trigger another refresh.
+
+Handle Confirm replies without updating the server binding,
+configuration or lease lifetimes. Accept Success from any server, wait
+through the confirmation window before acting on NotOnLink and retain
+leases if no server responds. Resume lease timers from aged IA data
+without double-counting elapsed time.
+
+Fixes: 038407eca8a4 ("dhcpv6: restart DHCPv6 on receipt of RA containing a new prefix")
+Signed-off-by: Tianling Shen <cnsztl@gmail.com>
+---
+ src/dhcpv6.c  | 151 ++++++++++++++++++++++++++++++++++++++------------
+ src/odhcp6c.c |  73 ++++++++++++++++++++----
+ src/odhcp6c.h |   8 ++-
+ src/ra.c      |  30 +++++++++-
+ src/ra.h      |   2 +-
+ 5 files changed, 216 insertions(+), 48 deletions(-)
+
+--- a/src/dhcpv6.c
++++ b/src/dhcpv6.c
+@@ -70,6 +70,7 @@ static void dhcpv6_clear_all_server_cand
+ static void dhcpv6_log_status_code(const uint16_t code, const char *scope,
+ 		const void *status_msg, int len);
+ 
++static reply_handler dhcpv6_handle_confirm;
+ static reply_handler dhcpv6_handle_reply;
+ static reply_handler dhcpv6_handle_advert;
+ static reply_handler dhcpv6_handle_rebind_reply;
+@@ -116,6 +117,14 @@ static const struct dhcpv6_retx dhcpv6_r
+ 		-1,
+ 		0
+ 	},
++	[DHCPV6_MSG_CONFIRM] = {
++		.max_delay = 1,
++		.init_timeo = 1,
++		.max_timeo = 4,
++		.name = "CONFIRM",
++		.handler_reply = dhcpv6_handle_confirm,
++		.reply_ret = -1,
++	},
+ 	[DHCPV6_MSG_REQUEST] = {
+ 		0,
+ 		DHCPV6_REQ_INIT_RT,
+@@ -302,6 +311,10 @@ static void dhcpv6_inc_counter(enum dhcp
+ 		dhcpv6_stats.request++;
+ 		break;
+ 
++	case DHCPV6_MSG_CONFIRM:
++		dhcpv6_stats.confirm++;
++		break;
++
+ 	case DHCPV6_MSG_RENEW:
+ 		dhcpv6_stats.renew++;
+ 		break;
+@@ -344,6 +357,9 @@ static char *dhcpv6_msg_to_str(enum dhcp
+ 	case DHCPV6_MSG_ADVERT:
+ 		return "ADVERTISE";
+ 
++	case DHCPV6_MSG_CONFIRM:
++		return "CONFIRM";
++
+ 	case DHCPV6_MSG_REQUEST:
+ 		return "REQUEST";
+ 
+@@ -466,6 +482,15 @@ const char *dhcpv6_state_to_str(enum dhc
+ 	case DHCPV6_REBIND_REPLY:
+ 		return "REBIND_REPLY";
+ 
++	case DHCPV6_CONFIRM:
++		return "CONFIRM";
++
++	case DHCPV6_CONFIRM_PROCESSING:
++		return "CONFIRM_PROCESSING";
++
++	case DHCPV6_CONFIRM_REPLY:
++		return "CONFIRM_REPLY";
++
+ 	case DHCPV6_INFO:
+ 		return "INFO";
+ 
+@@ -974,6 +999,11 @@ static void dhcpv6_send(enum dhcpv6_msg
+ 	if (req_msg_type == DHCPV6_MSG_INFO_REQ)
+ 		cnt = IOV_HDR_IA_NA;
+ 
++	if (req_msg_type == DHCPV6_MSG_CONFIRM) {
++		iov[IOV_SRV_ID].iov_len = 0;
++		iov[IOV_IA_PD].iov_len = 0;
++	}
++
+ 	// Disable IAs if not used
+ 	if (na_mode == IA_MODE_NONE) {
+ 		iov[IOV_HDR_IA_NA].iov_len = 0;
+@@ -1122,7 +1152,9 @@ static bool dhcpv6_response_is_valid(con
+ 			break;
+ 
+ 		case DHCPV6_OPT_SERVERID:
+-			if (server_id_len)
++			if (req_msg_type == DHCPV6_MSG_CONFIRM)
++				serverid_ok = olen > 0;
++			else if (server_id_len)
+ 				serverid_ok = (olen + DHCPV6_OPT_HDR_SIZE_U == server_id_len) && !memcmp(
+ 						&odata[-DHCPV6_OPT_HDR_SIZE], server_id, server_id_len);
+ 			else if (req_msg_type != DHCPV6_MSG_UNKNOWN)
+@@ -1270,14 +1302,14 @@ static int dhcpv6_handle_reconfigure(enu
+ 		}
+ 	}
+ 
++	if (msg != DHCPV6_MSG_UNKNOWN)
++		dhcpv6_handle_reply(orig, rc, NULL, NULL, NULL);
++
+ 	if (msg == DHCPV6_MSG_REBIND && t2 != UINT32_MAX)
+ 		t2 = 0;
+ 	if ((msg == DHCPV6_MSG_REBIND || msg == DHCPV6_MSG_RENEW) && t1 != UINT32_MAX)
+ 		t1 = 0;
+ 
+-	if (msg != DHCPV6_MSG_UNKNOWN)
+-		dhcpv6_handle_reply(orig, rc, NULL, NULL, NULL);
+-
+ 	return (msg == DHCPV6_MSG_UNKNOWN? -1: (int)msg);
+ }
+ 
+@@ -1416,6 +1448,28 @@ static int dhcpv6_commit_advert(void)
+ 	return dhcpv6_promote_server_cand();
+ }
+ 
++static int dhcpv6_handle_confirm(_o_unused enum dhcpv6_msg orig, _o_unused const int rc,
++		const void *opt, const void *end, _o_unused const struct sockaddr_in6 *from)
++{
++	uint16_t otype, olen;
++	uint8_t *odata;
++	int ret = 1;
++
++	dhcpv6_for_each_option(opt, end, otype, olen, odata) {
++		if (otype != DHCPV6_OPT_STATUS)
++			continue;
++		if (olen < 2)
++			return -1;
++		uint16_t code = (odata[0] << 8) | odata[1];
++		if (code == DHCPV6_NotOnLink)
++			ret = -2;
++		else if (code != DHCPV6_Success)
++			return -1;
++	}
++
++	return ret;
++}
++
+ static int dhcpv6_handle_rebind_reply(enum dhcpv6_msg orig, const int rc,
+ 		const void *opt, const void *end, const struct sockaddr_in6 *from)
+ {
+@@ -1439,31 +1493,8 @@ static int dhcpv6_handle_reply(enum dhcp
+ 
+ 	odhcp6c_expire(true);
+ 
+-	if (orig == DHCPV6_MSG_UNKNOWN) {
+-		static time_t last_update = 0;
+-		time_t now = odhcp6c_get_milli_time() / 1000;
+-
+-		uint32_t elapsed = (last_update > 0) ? now - last_update : 0;
+-		last_update = now;
+-
+-		if (t1 != UINT32_MAX)
+-			t1 -= elapsed;
+-
+-		if (t2 != UINT32_MAX)
+-			t2 -= elapsed;
+-
+-		if (t3 != UINT32_MAX)
+-			t3 -= elapsed;
+-
+-		if (t1 < 0)
+-			t1 = 0;
+-
+-		if (t2 < 0)
+-			t2 = 0;
+-
+-		if (t3 < 0)
+-			t3 = 0;
+-	}
++	if (orig == DHCPV6_MSG_UNKNOWN)
++		dhcpv6_calc_refresh_timers();
+ 
+ 	if (orig == DHCPV6_MSG_REQUEST && !odhcp6c_is_bound()) {
+ 		// Delete NA and PD we have in the state from the Advert
+@@ -2245,6 +2276,38 @@ int dhcpv6_promote_server_cand(void)
+ 	return ret;
+ }
+ 
++void dhcpv6_refresh(int mode)
++{
++	enum dhcpv6_state next = mode == DHCPV6_STATEFUL ? DHCPV6_RESET : DHCPV6_INFO;
++	size_t len;
++	struct odhcp6c_entry *entries;
++
++	odhcp6c_expire(false);
++	dhcpv6_calc_refresh_timers();
++	entries = odhcp6c_get_state(STATE_IA_PD, &len);
++	for (size_t i = 0; i < len / sizeof(*entries); i++)
++		if (entries[i].valid) {
++			next = DHCPV6_RENEW;
++			// Keep omitted IAs due for renewal across timer recalculation.
++			entries[i].t1 = 0;
++		}
++
++	entries = odhcp6c_get_state(STATE_IA_NA, &len);
++	for (size_t i = 0; i < len / sizeof(*entries); i++)
++		if (entries[i].valid) {
++			if (next == DHCPV6_RENEW)
++				entries[i].t1 = 0;
++			else
++				next = DHCPV6_CONFIRM;
++		}
++
++	// An early Renew runs until the remaining T2, as if T1 had expired.
++	if (next == DHCPV6_RENEW)
++		t1 = 0;
++	dhcpv6_retx[DHCPV6_MSG_UNKNOWN].is_retransmit = false;
++	dhcpv6_set_state(next);
++}
++
+ int dhcpv6_send_request(enum dhcpv6_msg req_msg_type)
+ {
+ 	struct dhcpv6_retx *retx = &dhcpv6_retx[req_msg_type];
+@@ -2255,7 +2318,13 @@ int dhcpv6_send_request(enum dhcpv6_msg
+ 		if (retx->max_delay) {
+ 			if (retx->delay_msec == 0) {
+ 				// Initial delay before starting the transaction
+-				retx->delay_msec = (dhcpv6_rand_delay((10000 * retx->max_delay) / 2) + (1000 * retx->max_delay) / 2);
++				if (req_msg_type == DHCPV6_MSG_CONFIRM) {
++					uint32_t random;
++					odhcp6c_random(&random, sizeof(random));
++					retx->delay_msec = random % 1001;
++				} else {
++					retx->delay_msec = (dhcpv6_rand_delay((10000 * retx->max_delay) / 2) + (1000 * retx->max_delay) / 2);
++				}
+ 				dhcpv6_set_state_timeout(retx->delay_msec);
+ 				// Add current time to calculate absolute time
+ 				retx->delay_msec += odhcp6c_get_milli_time();
+@@ -2277,15 +2346,23 @@ int dhcpv6_send_request(enum dhcpv6_msg
+ 		retx->timeout = UINT32_MAX;
+ 		retx->reply_ret = -1;
+ 
+-		if (req_msg_type == DHCPV6_MSG_UNKNOWN)
++		if (req_msg_type == DHCPV6_MSG_CONFIRM)
++			retx->timeout = 10;
++		else if (req_msg_type == DHCPV6_MSG_UNKNOWN) {
++			// Confirm preserves leases, so resume their remaining timers.
++			odhcp6c_expire(false);
++			dhcpv6_calc_refresh_timers();
+ 			retx->timeout = t1;
+-		else if (req_msg_type == DHCPV6_MSG_RENEW)
++		} else if (req_msg_type == DHCPV6_MSG_RENEW)
+ 			retx->timeout = (t2 > t1) ? t2 - t1 : ((t1 == UINT32_MAX) ? UINT32_MAX : 0);
+ 		else if (req_msg_type == DHCPV6_MSG_REBIND)
+ 			retx->timeout = (t3 > t2) ? t3 - t2 : ((t2 == UINT32_MAX) ? UINT32_MAX : 0);
+ 
+-		if (retx->timeout == 0)
++		if (retx->timeout == 0) {
++			retx->start = retx->round_start = retx->round_end = odhcp6c_get_milli_time();
++			dhcpv6_next_state();
+ 			return -1;
++		}
+ 
+ 		notice("Starting %s transaction (timeout %"PRIu64"s, max rc %d)",
+ 			retx->name, retx->timeout, retx->max_rc);
+@@ -2410,7 +2487,10 @@ int dhcpv6_receive_response(enum dhcpv6_
+ 		dhcpv6_msg_to_str(hdr->msg_type), elapsed);
+ 
+ 	if (retx->handler_reply) {
+-		retx->reply_ret = retx->handler_reply(req_msg_type, retx->rc, opt, opt_end, &addr);
++		int result = retx->handler_reply(req_msg_type, retx->rc, opt, opt_end, &addr);
++		if (req_msg_type != DHCPV6_MSG_CONFIRM ||
++				(retx->reply_ret != 1 && (result == 1 || result == -2)))
++			retx->reply_ret = result;
+ 		len = retx->reply_ret;
+ 	}
+ 
+@@ -2434,7 +2514,8 @@ int dhcpv6_state_processing(enum dhcpv6_
+ 
+ 		if (ret < 0 && ((retx->timeout == UINT32_MAX) || (elapsed / 1000 < retx->timeout)) &&
+ 			(!retx->max_rc || retx->rc < retx->max_rc)) {
+-				retx->reply_ret = -1;
++				if (req_msg_type != DHCPV6_MSG_CONFIRM)
++					retx->reply_ret = -1;
+ 				dhcpv6_prev_state();
+ 		} else {
+ 			retx->is_retransmit = false;
+--- a/src/odhcp6c.c
++++ b/src/odhcp6c.c
+@@ -56,6 +56,9 @@ static void odhcp6c_cleanup(void);
+ 
+ static uint8_t *state_data[_STATE_MAX] = {NULL};
+ static size_t state_len[_STATE_MAX] = {0};
++static bool odhcp6c_server_advertised(void);
++static bool ra_refresh_pending;
++static uint64_t ra_refresh_after;
+ 
+ static volatile bool signal_io = false;
+ static volatile bool signal_usr1 = false;
+@@ -596,10 +599,11 @@ int main(_o_unused int argc, char* const
+ 
+ 	while (!terminate) { // Main logic
+ 		int poll_res;
+-		bool signalled = odhcp6c_signal_process();
++		bool signalled = odhcp6c_signal_process(mode);
+ 
+ 		switch (dhcpv6_get_state()) {
+ 		case DHCPV6_INIT:
++			ra_refresh_pending = false;
+ 			odhcp6c_clear_state(STATE_SERVER_ID);
+ 			odhcp6c_clear_state(STATE_SERVER_ADDR);
+ 			odhcp6c_clear_state(STATE_IA_NA);
+@@ -755,17 +759,38 @@ int main(_o_unused int argc, char* const
+ 			}
+ 			break;
+ 
++		case DHCPV6_CONFIRM:
++			req_msg_type = DHCPV6_MSG_CONFIRM;
++			dhcpv6_send_request(req_msg_type);
++			break;
++
++		case DHCPV6_CONFIRM_REPLY:
++			odhcp6c_expire(false);
++			size_t confirmed_na_len;
++			odhcp6c_get_state(STATE_IA_NA, &confirmed_na_len);
++			if (res == -2 || !confirmed_na_len) {
++				// NotOnLink: stop using the addresses without releasing them.
++				odhcp6c_clear_state(STATE_IA_NA);
++				dhcpv6_set_state(DHCPV6_RESET);
++			} else {
++				dhcpv6_set_state(DHCPV6_BOUND);
++			}
++			break;
++
+ 		case DHCPV6_INFO:
+ 			req_msg_type = DHCPV6_MSG_INFO_REQ;
+ 			dhcpv6_send_request(req_msg_type);
+ 			break;
+ 
+ 		case DHCPV6_INFO_REPLY:
++			if (res > 0 && bound)
++				notify_state_change("updated", 0, false);
+ 			dhcpv6_set_state(res < 0 ? DHCPV6_RESET : DHCPV6_BOUND);
+ 			break;
+ 
+ 		case DHCPV6_SOLICIT_PROCESSING:
+ 		case DHCPV6_REQUEST_PROCESSING:
++		case DHCPV6_CONFIRM_PROCESSING:
+ 			res = dhcpv6_state_processing(req_msg_type);
+ 			break;
+ 
+@@ -787,6 +812,7 @@ int main(_o_unused int argc, char* const
+ 			break;
+ 
+ 		case DHCPV6_EXIT:
++			ra_refresh_pending = false;
+ 			odhcp6c_expire(false);
+ 
+ 			size_t ia_pd_len, ia_na_len, server_id_len;
+@@ -815,6 +841,7 @@ int main(_o_unused int argc, char* const
+ 			break;
+ 
+ 		case DHCPV6_RESET:
++			ra_refresh_pending = false;
+ 			if (!client_id_param)
+ 				odhcp6c_clear_state(STATE_CLIENT_ID);
+ 
+@@ -838,9 +865,32 @@ int main(_o_unused int argc, char* const
+ 			break;
+ 		}
+ 
++		// Consume replies before starting an RA-triggered exchange.
++		if (ra_refresh_pending && bound &&
++				(dhcpv6_get_state() == DHCPV6_BOUND ||
++				 dhcpv6_get_state() == DHCPV6_BOUND_PROCESSING)) {
++			uint64_t now = odhcp6c_get_milli_time();
++			if (now >= ra_refresh_after) {
++				ra_refresh_pending = false;
++				ra_refresh_after = now + 30000;
++				// Reconsider configured IAs when a server becomes available.
++				if (mode == DHCPV6_STATELESS && odhcp6c_server_advertised() &&
++						(config_dhcp->ia_na_mode != IA_MODE_NONE ||
++						 config_dhcp->ia_pd_mode != IA_MODE_NONE))
++					dhcpv6_set_state(DHCPV6_RESET);
++				else
++					dhcpv6_refresh(mode);
++			}
++		}
++
+ 		if (signal_usr2 || signal_term)
+ 			dhcpv6_set_state(DHCPV6_EXIT);
+ 
++		if (ra_refresh_pending && bound && dhcpv6_get_state() == DHCPV6_BOUND_PROCESSING) {
++			uint64_t now = odhcp6c_get_milli_time();
++			dhcpv6_set_state_timeout(ra_refresh_after > now ? ra_refresh_after - now : 1);
++		}
++
+ 		poll_res = poll(fds, nfds, dhcpv6_get_state_timeout());
+ 		dhcpv6_reset_state_timeout();
+ 		if (poll_res == -1 && (errno == EINTR || errno == EAGAIN)) {
+@@ -938,7 +988,7 @@ static uint8_t* odhcp6c_resize_state(enu
+ 	return n;
+ }
+ 
+-static bool odhcp6c_server_advertised()
++static bool odhcp6c_server_advertised(void)
+ {
+ 	size_t len;
+ 	uint8_t *start = odhcp6c_get_state(STATE_RA_ROUTE, &len);
+@@ -958,23 +1008,25 @@ static bool odhcp6c_server_advertised()
+ 	return false;
+ }
+ 
+-bool odhcp6c_signal_process(void)
++bool odhcp6c_signal_process(int mode)
+ {
+ 	while (signal_io) {
+ 		signal_io = false;
+ 
+ 		size_t old_ra_prefix_size = state_len[STATE_RA_PREFIX];
+-		bool ra_updated = ra_process();
++		bool server_was_advertised = odhcp6c_server_advertised();
++		bool prefix_changed = false;
++		bool ra_updated = ra_process(&prefix_changed);
+ 
+ 		if (ra_link_up()) {
+ 			signal_usr2 = true;
+ 			ra = false;
+-		} else if (old_ra_prefix_size != state_len[STATE_RA_PREFIX] &&
+-				odhcp6c_server_advertised()) {
+-			// Restart DHCPv6 transaction when router advertisement flags
+-			// show presence of a DHCPv6 server and new prefixes were
+-			// added to STATE_RA_PREFIX state
+-			signal_usr2 = true;
++			odhcp6c_clear_state(STATE_RA_ONLINK);
++			ra_refresh_pending = false;
++		} else if (prefix_changed || (mode == DHCPV6_STATELESS &&
++				odhcp6c_server_advertised() &&
++				(!server_was_advertised || old_ra_prefix_size != state_len[STATE_RA_PREFIX]))) {
++			ra_refresh_pending = true;
+ 		}
+ 
+ 		if (ra_updated && (bound || config_dhcp->allow_slaac_only)) {
+@@ -1144,6 +1196,7 @@ void odhcp6c_expire(bool expire_ia_pd)
+ 	last_update = now;
+ 
+ 	odhcp6c_expire_list(STATE_RA_PREFIX, elapsed, true);
++	odhcp6c_expire_list(STATE_RA_ONLINK, elapsed, true);
+ 	odhcp6c_expire_list(STATE_RA_ROUTE, elapsed, true);
+ 	odhcp6c_expire_list(STATE_RA_DNS, elapsed, true);
+ 	odhcp6c_expire_list(STATE_RA_SEARCH, elapsed, true);
+--- a/src/odhcp6c.h
++++ b/src/odhcp6c.h
+@@ -222,6 +222,7 @@ enum dhcpv6_msg {
+ 	DHCPV6_MSG_SOLICIT = 1,
+ 	DHCPV6_MSG_ADVERT = 2,
+ 	DHCPV6_MSG_REQUEST = 3,
++	DHCPV6_MSG_CONFIRM = 4,
+ 	DHCPV6_MSG_RENEW = 5,
+ 	DHCPV6_MSG_REBIND = 6,
+ 	DHCPV6_MSG_REPLY = 7,
+@@ -252,6 +253,9 @@ enum dhcpv6_state {
+ 	DHCPV6_REBIND,
+ 	DHCPV6_REBIND_PROCESSING,
+ 	DHCPV6_REBIND_REPLY,
++	DHCPV6_CONFIRM,
++	DHCPV6_CONFIRM_PROCESSING,
++	DHCPV6_CONFIRM_REPLY,
+ 	DHCPV6_INFO,
+ 	DHCPV6_INFO_PROCESSING,
+ 	DHCPV6_INFO_REPLY,
+@@ -445,6 +449,7 @@ enum odhcp6c_state {
+ 	STATE_SIP_FQDN,
+ 	STATE_RA_ROUTE,
+ 	STATE_RA_PREFIX,
++	STATE_RA_ONLINK,
+ 	STATE_RA_DNS,
+ 	STATE_RA_SEARCH,
+ 	STATE_AFTR_NAME,
+@@ -561,6 +566,7 @@ struct odhcp6c_opt_cfg {
+ int init_dhcpv6(const char *ifname);
+ int dhcpv6_get_ia_mode(void);
+ int dhcpv6_promote_server_cand(void);
++void dhcpv6_refresh(int mode);
+ int dhcpv6_send_request(enum dhcpv6_msg type);
+ int dhcpv6_receive_response(enum dhcpv6_msg type);
+ enum dhcpv6_state dhcpv6_get_state(void);
+@@ -590,7 +596,7 @@ ssize_t script_unhexlify(uint8_t *dst, s
+ void script_hexlify(char *dst, const uint8_t *src, size_t len);
+ void script_call(const char *status, int delay, bool resume);
+ 
+-bool odhcp6c_signal_process(void);
++bool odhcp6c_signal_process(int mode);
+ uint64_t odhcp6c_get_milli_time(void);
+ int odhcp6c_random(void *buf, size_t len);
+ bool odhcp6c_is_bound(void);
+--- a/src/ra.c
++++ b/src/ra.c
+@@ -499,7 +499,32 @@ int ra_get_retransmit(void)
+ 	return ra_retransmit;
+ }
+ 
+-bool ra_process(void)
++static bool ra_update_onlink(struct odhcp6c_entry *entry)
++{
++	struct odhcp6c_entry prefix = *entry;
++	bool significant = false;
++	size_t len;
++	struct odhcp6c_entry *old = odhcp6c_get_state(STATE_RA_ONLINK, &len);
++
++	// Ignore host bits in a PIO's prefix identity.
++	for (unsigned int bit = prefix.length; bit < 128; bit++)
++		prefix.target.s6_addr[bit / 8] &= ~(0x80 >> (bit % 8));
++
++	for (size_t i = 0; i < len / sizeof(*old); i++) {
++		if (old[i].length != prefix.length ||
++				memcmp(&old[i].target, &prefix.target, sizeof(prefix.target)))
++			continue;
++		significant = old[i].iaid && !prefix.preferred;
++		goto update;
++	}
++	significant = prefix.valid > 0;
++update:
++	// Remember advertised preference independently of lifetime aging.
++	prefix.iaid = !!prefix.preferred;
++	return odhcp6c_update_entry(STATE_RA_ONLINK, &prefix, 0) && significant;
++}
++
++bool ra_process(bool *prefix_changed)
+ {
+ 	bool found = false;
+ 	bool changed = false;
+@@ -659,6 +684,9 @@ bool ra_process(void)
+ 						|| entry->valid < entry->preferred)
+ 					continue;
+ 
++				if (pinfo->nd_opt_pi_flags_reserved & ND_OPT_PI_FLAG_ONLINK)
++					*prefix_changed |= ra_update_onlink(entry);
++
+ 				if ((pinfo->nd_opt_pi_flags_reserved & ND_OPT_PI_FLAG_ONLINK) && !ptp_link)
+ 					changed |= odhcp6c_update_entry(STATE_RA_ROUTE, entry,
+ 									ra_holdoff_interval);
+--- a/src/ra.h
++++ b/src/ra.h
+@@ -69,6 +69,6 @@ int ra_init(const char *ifname, const st
+ 	    ra_ifid_mode_t ifid_mode, unsigned int options,
+ 	    unsigned int holdoff_interval);
+ bool ra_link_up(void);
+-bool ra_process(void);
++bool ra_process(bool *prefix_changed);
+ 
+ #endif /* _RA_H_ */
